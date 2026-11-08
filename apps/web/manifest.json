@@ -1,0 +1,11 @@
+{
+  "name": "Ale Voice",
+  "short_name": "Ale",
+  "description": "Voice-first companion for coastal fishers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e9eef3",
+  "theme_color": "#0a4d7a",
+  "icons": []
+}
+

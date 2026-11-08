@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ale Voice – Voice-First PWA</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a4d7a">
+<style>
+:root{--page:#e9eef3;--ink:#0b2540;--sub:#54708a;--card:#fff;--bg:#f4f8fb;--sea:#0a4d7a;--sun:#ff8a2b;--line:#dbe6ee;--st:#1fa35b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#070d14}}
+:root[data-theme="dark"]{--page:#070d14}
+*{box-sizing:border-box;margin:0}
+html{height:100%}body{min-height:100%}
+body{background:var(--page);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px}
+.phone{width:min(390px,100%);height:min(760px,calc(100vh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)));height:min(760px,calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)));min-height:520px;flex:none;border-radius:38px;border:8px solid #10202f;background:var(--bg);color:var(--ink);overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 20px 50px #0004;transition:background .3s}
+.phone.night{--bg:#0a1622;--card:#12263a;--ink:#e8f1f8;--sub:#8fb0c9;--line:#1f3a52}
+.top{padding:16px 20px 8px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:800;font-size:22px;letter-spacing:.5px}.logo span{color:var(--sun)}
+.pill{border:0;background:var(--card);color:var(--ink);border-radius:20px;padding:8px 12px;font-size:13px;font-weight:600;box-shadow:0 1px 3px #0002;cursor:pointer}
+.screens{flex:1;overflow-y:auto;padding:4px 16px 16px}
+.s{display:none}.s.on{display:block;animation:in .3s}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+h2{font-size:20px;margin:6px 0 2px}.sub{color:var(--sub);font-size:14px;margin-bottom:12px}
+.card{background:var(--card);border-radius:22px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px #0a4d7a14}
+.hero{text-align:center;color:#fff;border-radius:28px;padding:18px 16px 20px;background:var(--st);transition:background .5s}
+.hero .big{font-size:38px;font-weight:800;line-height:1}.hero .kn{font-size:20px;opacity:.95;margin-top:4px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.stat{text-align:center}.stat b{display:block;font-size:22px}.stat small{color:var(--sub);font-size:12px}
+.btn{width:100%;border:0;border-radius:20px;padding:18px;font-size:18px;font-weight:700;background:var(--sea);color:#fff;cursor:pointer;min-height:60px}
+.btn.alt{background:var(--sun)}
+.btn.ghost{background:transparent;color:var(--sea);border:2px solid var(--sea);font-size:15px;padding:12px;min-height:48px}
+.phone.night .btn.ghost{color:#8fd0ff;border-color:#8fd0ff}
+.map{background:linear-gradient(#0b3a5e,#072a45);border-radius:24px;padding:6px;margin-bottom:12px}
+.sosw{display:flex;flex-direction:column;align-items:center;gap:6px;margin:6px 0}
+.sos{width:150px;height:150px;border-radius:50%;border:0;background:#d6372f;color:#fff;font-size:34px;font-weight:800;position:relative;cursor:pointer;touch-action:none;animation:pulse 2s infinite;user-select:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #d6372f88}70%{box-shadow:0 0 0 22px #d6372f00}100%{box-shadow:0 0 0 0 #d6372f00}}
+.sos svg{position:absolute;inset:-8px;width:166px;height:166px;transform:rotate(-90deg)}
+.fish{display:flex;align-items:center;gap:12px}
+.fish .e{width:56px;height:56px;border-radius:18px;background:#e3f2fb;display:grid;place-items:center;font-size:30px}
+.phone.night .fish .e{background:#1b3a55}
+.fish b{font-size:17px}.fish .p{margin-left:auto;text-align:right;font-weight:800;font-size:18px}
+.up{color:#1fa35b;font-size:12px;font-weight:700}.dn{color:#d6372f;font-size:12px;font-weight:700}
+.steps{display:flex;justify-content:space-between;position:relative;margin:14px 4px}
+.steps:before{content:"";position:absolute;left:24px;right:24px;top:22px;height:4px;background:var(--line)}
+.step{position:relative;text-align:center;width:33%;font-size:13px;font-weight:600;color:var(--sub);cursor:pointer}
+.step i{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;margin:0 auto 6px;background:var(--card);border:3px solid var(--line);font-style:normal;font-size:20px}
+.step.on{color:var(--ink)}.step.on i{background:var(--sun);border-color:var(--sun)}
+.bars{display:flex;align-items:flex-end;gap:8px;height:110px;margin-top:8px}
+.bars div{flex:1;background:var(--sea);border-radius:8px 8px 0 0;position:relative}
+.bars div:nth-child(odd){background:var(--sun)}
+.bars span{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:11px;color:var(--sub)}
+.tabs{display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 6px 10px}
+.tab{flex:1;border:0;background:none;color:var(--sub);font-size:11px;font-weight:600;padding:6px 0;cursor:pointer;border-radius:14px}
+.tab b{display:block;font-size:22px;filter:grayscale(1);opacity:.7}
+.tab.on{color:var(--sea);background:#0a4d7a14}.tab.on b{filter:none;opacity:1}
+.phone.night .tab.on{color:#8fd0ff}
+.toast{position:absolute;left:16px;right:16px;bottom:84px;background:#10202f;color:#fff;border-radius:18px;padding:14px;font-weight:600;text-align:center;opacity:0;pointer-events:none;transition:.3s}
+.toast.on{opacity:1}
+.pills{display:flex;gap:6px}
+.phone.glare{--bg:#fff;--card:#fff;--ink:#000;--sub:#222;--line:#000}.phone.glare .card{border:2px solid #000;box-shadow:none}
+.phone.xl .screens{zoom:1.15}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:16px;padding:10px 12px;font-size:15px;font-weight:600;cursor:pointer;min-height:44px}.chip.on{background:var(--sea);border-color:var(--sea);color:#fff}
+.stepper{display:flex;align-items:center;justify-content:center;gap:16px;font-size:18px;margin:6px 0 10px}.stepper button{width:56px;height:56px;border-radius:50%;border:0;background:var(--sun);color:#fff;font-size:28px;font-weight:800;cursor:pointer}.stepper b{font-size:30px}
+.verdict{text-align:center;font-weight:800;font-size:17px;border-radius:14px;padding:10px;color:#fff}
+.alertbar{display:none;background:#d6372f;color:#fff;border-radius:18px;padding:12px;font-weight:700;margin-bottom:12px;text-align:center}.alertbar.on{display:block}.alertbar.amber{background:#f0a020}.alertbar.ok{background:#1fa35b}
+.bid{display:flex;align-items:center;gap:10px;font-size:15px}.bid b{font-size:17px}.bid button{margin-left:auto;border:0;border-radius:14px;padding:12px 14px;background:#1fa35b;color:#fff;font-weight:700;cursor:pointer;min-height:48px}
+.wave{display:block;width:100%;height:36px;margin-bottom:10px}
+#auth{position:absolute;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;padding:20px;overflow-y:auto}#auth.off{display:none}.toast{z-index:30}
+#auth .btn{flex:none;margin-top:8px}.tab{font-size:10px}.tab b{font-size:20px}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.key{height:54px;border:0;border-radius:16px;background:var(--card);color:var(--ink);font-size:24px;font-weight:700;box-shadow:0 1px 3px #0002;cursor:pointer}
+.boxes{display:flex;gap:10px;justify-content:center;margin:12px 0}.boxes i{width:56px;height:64px;border-radius:16px;border:3px solid var(--line);display:grid;place-items:center;font-size:30px;font-weight:800;font-style:normal;background:var(--card)}.boxes i.on{border-color:var(--sun)}
+.rc{display:flex;align-items:center;gap:14px;margin-bottom:10px;border:3px solid transparent;cursor:pointer;font-size:19px;font-weight:700}.rc small{display:block;font-weight:400;font-size:13px;color:var(--sub)}.rc.on{border-color:var(--sun)}
+.dots{display:flex;gap:6px;justify-content:center;margin:8px 0 12px}.dots i{width:10px;height:10px;border-radius:50%;background:var(--line)}.dots i.on{background:var(--sun)}
+.inp{width:100%;border:3px solid var(--line);border-radius:16px;padding:14px;font-size:18px;background:var(--card);color:var(--ink);margin:4px 0 10px}
+.chk{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:600;cursor:pointer;min-height:56px}.chk i{margin-left:auto;font-style:normal;width:44px;height:44px;border-radius:14px;border:3px solid var(--line);display:grid;place-items:center;font-size:22px}.chk.on i{background:#1fa35b;border-color:#1fa35b;color:#fff}
+#mic{position:absolute;right:14px;bottom:84px;z-index:15;width:58px;height:58px;border-radius:50%;border:0;background:var(--sun);color:#fff;font-size:26px;box-shadow:0 6px 16px #0005;cursor:pointer;display:none;place-items:center}
+#vs{position:absolute;left:0;right:0;bottom:0;top:44px;z-index:25;background:var(--bg);border-radius:26px 26px 0 0;box-shadow:0 -10px 30px #0007;display:flex;flex-direction:column;padding:12px 14px}#vs.off{display:none}
+.vh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.vh button{border:0;background:var(--card);color:var(--ink);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;flex:none}
+.vtog{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.vtog .chip{min-height:34px;padding:6px 10px;font-size:12px;margin:0}
+#vb{flex:1;overflow-y:auto;padding:2px}
+.bub{max-width:90%;padding:10px 12px;border-radius:18px;margin:6px 0;font-size:15px;font-weight:600}.bub small{display:block;font-weight:400;opacity:.85;font-size:12px;margin-top:3px}
+.bub.u{background:var(--sea);color:#fff;margin-left:auto;border-bottom-right-radius:6px}.bub.a{background:var(--card);border-bottom-left-radius:6px;box-shadow:0 1px 4px #0002}
+.ic{display:inline-block;background:#0a4d7a22;border-radius:10px;padding:3px 8px;font-size:12px;font-weight:700;margin:4px 4px 0 0}
+.insp{background:#0a1622;color:#9fd6ff;border-radius:14px;padding:10px;font:11px/1.5 ui-monospace,Consolas,monospace;margin:6px 0;white-space:pre-wrap}
+.flow{display:none;font-size:11px;font-weight:700;text-align:center;margin:2px 0;color:var(--sea)}.flow.on{display:block}
+.vwave{display:flex;gap:3px;align-items:center;justify-content:center;height:28px}.vwave i{width:4px;height:6px;background:var(--sun);border-radius:2px}.vwave.on i{animation:wv .6s infinite ease-in-out}.vwave i:nth-child(2n){animation-delay:.15s}.vwave i:nth-child(3n){animation-delay:.3s}@keyframes wv{50%{height:24px}}
+#vc{max-height:36%;overflow-y:auto}.chip.sc{display:block;width:100%;text-align:left;margin:0 0 6px;font-size:14px}.chip.sc small{display:block;font-weight:400;opacity:.8}
+.vmic{display:flex;align-items:center;gap:12px;margin-top:6px}.vmic small{color:var(--sub);font-size:12px}
+#vm{width:68px;height:68px;border-radius:50%;border:0;background:var(--sun);color:#fff;font-size:30px;cursor:pointer;flex:none}#vm.on{background:#d6372f;animation:pulse 1.2s infinite}
+.note{font-size:12px;color:var(--sub);text-align:center;max-width:390px}
+</style>
+</head>
+<body>
+<div class="phone" id="ph">
+ <div class="top"><div class="logo">ale<span>~</span></div>
+  <div class="pills"><button class="pill" id="lg">EN</button><button class="pill" id="th">☀️ Day</button><button class="pill" id="xl">A+</button><button class="pill" id="pf">👤</button></div></div><div class="chips" id="roles" style="padding:0 16px;margin:0 0 4px;flex-wrap:nowrap;gap:6px"></div>
+ <div class="screens">
+  <!-- DAWN -->
+  <div class="s on" id="s0">
+   <h2 id="greet">Good morning, Suresh</h2><p class="sub">Malpe Harbour · 5:40 AM</p>
+   <div class="hero" id="hero">
+    <svg viewBox="0 0 200 110" width="210"><path d="M20 100A80 80 0 0 1 180 100" fill="none" stroke="#fff5" stroke-width="16" stroke-linecap="round"/>
+    <g id="needle" style="transform-origin:100px 100px;transition:transform .8s;transform:rotate(-60deg)"><line x1="100" y1="100" x2="100" y2="38" stroke="#fff" stroke-width="7" stroke-linecap="round"/></g><circle cx="100" cy="100" r="9" fill="#fff"/></svg>
+    <div class="big" id="lbl">Go</div><div class="kn" id="kn">ಹೋಗಬಹುದು</div></div>
+   <div class="card row" style="margin-top:12px">
+    <div class="stat"><b id="w1">12</b><small>Wind km/h 💨</small></div>
+    <div class="stat"><b id="w2">0.8 m</b><small>Waves 🌊</small></div>
+    <div class="stat"><b>6:12</b><small>High tide 🌙</small></div></div>
+   <div class="card"><b>🌙 Tide today</b><span class="sub" style="float:right;margin:0">High 6:12 · Low 12:30</span><svg viewBox="0 0 300 50" width="100%"><path id="tp" d="M0 25C50 -5 100 -5 150 25S250 55 300 25" fill="none" stroke="#0a4d7a" stroke-width="4"/><circle r="7" fill="#ff8a2b"><animateMotion dur="8s" repeatCount="indefinite"><mpath href="#tp"/></animateMotion></circle></svg></div>
+   <button class="btn" id="spk">🔊 Hear in Kannada</button>
+   <button class="btn ghost" id="sim" style="margin-top:10px">Simulate weather change</button>
+  </div>
+  <!-- SEA -->
+  <div class="s" id="s1">
+   <h2>Sea mode</h2><p class="sub">Offline · GPS on · 3 boats nearby</p>
+   <div class="map"><svg viewBox="0 0 340 230" width="100%">
+    <rect width="340" height="230" rx="18" fill="#0b3a5e"/>
+    <path d="M0 200Q60 170 120 205T240 195T340 210V230H0Z" fill="#c9a96a"/>
+    <circle id="sz" cx="170" cy="100" r="92" fill="#1fa35b22" stroke="#3ddc84" stroke-width="3" stroke-dasharray="8 6"/>
+    <text x="170" y="22" fill="#3ddc84" font-size="12" text-anchor="middle" font-weight="700">SAFE ZONE</text>
+    <path d="M150 135L96 192" stroke="#ff8a2b" stroke-width="5" stroke-dasharray="2 9" stroke-linecap="round"/>
+    <text x="70" y="196" font-size="22">🏠</text>
+    <circle cx="150" cy="120" r="14" fill="#ff8a2b33"><animate attributeName="r" values="10;22;10" dur="2s" repeatCount="indefinite"/></circle>
+    <text x="138" y="128" font-size="24">⛵</text>
+    <text x="220" y="70" font-size="18">📍</text><text x="240" y="130" font-size="16">🚤</text><g id="pins"></g></svg></div>
+   <div class="row"><button class="btn alt" id="pin">🎙 Fish spot</button><button class="btn" id="home">🏠 Head home</button></div>
+   <div class="sosw" style="margin-top:14px"><button class="sos" id="sos"><svg viewBox="0 0 166 166"><circle cx="83" cy="83" r="79" fill="none" stroke="#fff" stroke-width="7" stroke-dasharray="496" stroke-dashoffset="496" id="ring" stroke-linecap="round"/></svg>SOS</button>
+   <div class="sub" style="margin:0">Press and hold for 2 seconds</div></div>
+   <div class="card" style="margin-top:12px"><b>Crew fish spots</b><div id="spots" class="sub" style="margin:6px 0 0">No spots yet. Tap Fish spot and speak.</div></div>
+  </div>
+  <!-- PRICES -->
+  <div class="s" id="s2">
+   <h2>Fair price board</h2><p class="sub">Today · ₹ per kg · 4 harbours</p>
+   <div id="price-cards">
+    <div class="card fish"><div class="e">🐟</div><div><b>Sardine</b><br><span class="up">▲ ₹12 vs yesterday</span></div><div class="p">₹90–110</div></div>
+    <div class="card fish"><div class="e">🐠</div><div><b>Mackerel</b><br><span class="dn">▼ ₹8 vs yesterday</span></div><div class="p">₹140–170</div></div>
+    <div class="card fish"><div class="e">🐡</div><div><b>Pomfret</b><br><span class="up">▲ ₹40 vs yesterday</span></div><div class="p">₹620–760</div></div>
+    <div class="card fish"><div class="e">🦐</div><div><b>Prawns</b><br><span class="up">▲ ₹15 vs yesterday</span></div><div class="p">₹380–450</div></div>
+   </div>
+   <div class="card"><b>Is the offer fair?</b><div class="chips" id="oc"></div><div class="stepper"><button id="omn">−</button><b>₹<span id="ov">100</span></b>/kg<button id="opl">+</button></div><div class="verdict" id="vd"></div></div>
+  </div>
+  <!-- FAMILY -->
+  <div class="s" id="s3">
+   <h2>Family view</h2><p class="sub">Shown on Lakshmi’s phone</p><div class="alertbar" id="fal"></div>
+   <div class="card"><div style="font-size:44px;text-align:center" id="fe">⛵</div>
+    <h2 style="text-align:center" id="ft">Boat is out at sea</h2><p class="sub" style="text-align:center" id="fs">Safe zone · last seen 2 min ago</p>
+    <div class="steps" id="steps"><div class="step on" data-i="0"><i>⛵</i>Out</div><div class="step" data-i="1"><i>🧭</i>Returning</div><div class="step" data-i="2"><i>⚓</i>Landed</div></div></div>
+   <svg class="wave" viewBox="0 0 400 36" preserveAspectRatio="none"><path fill="#0a4d7a55" d="M0 18Q50 0 100 18T200 18T300 18T400 18T500 18T600 18V36H0Z"><animateTransform attributeName="transform" type="translate" values="0 0;-200 0" dur="4s" repeatCount="indefinite"/></path></svg>
+   <button class="btn" id="call">📞 Call Suresh</button><button class="btn ghost" id="fsim" style="margin-top:10px">Simulate: boat off route</button>
+  </div>
+  <!-- DIARY -->
+  <div class="s" id="s4">
+   <h2>Earnings diary</h2><p class="sub">This week · taps only, no typing</p>
+   <div class="card"><div class="row"><div class="stat"><b id="dsold">₹18,400</b><small>Sold</small></div><div class="stat"><b id="dfuel">₹5,200</b><small>Fuel</small></div><div class="stat"><b id="dkept" style="color:#1fa35b">₹13,200</b><small>Kept</small></div></div>
+    <div class="bars" style="margin-bottom:22px"><div style="height:45%"><span>M</span></div><div style="height:70%"><span>T</span></div><div style="height:30%"><span>W</span></div><div style="height:90%"><span>T</span></div><div style="height:60%"><span>F</span></div><div style="height:100%"><span>S</span></div></div></div>
+   <div class="row"><button class="btn alt" id="add1">＋ Catch</button><button class="btn" id="add2">⛽ Fuel</button></div><div class="card" id="dlog" style="margin-top:12px"></div></div>
+  <!-- LANDING -->
+  <div class="s" id="s5"><h2>Landing alert</h2><p class="sub">Tell buyers what you are bringing</p>
+   <div class="card"><b>What did you catch?</b><div class="chips" id="lc"></div><div class="stepper"><button id="kmn">−</button><b id="kg">40</b><span>kg</span><button id="kpl">+</button></div></div>
+   <button class="btn alt" id="lnotify">📣 Notify buyers · ETA 40 min</button><div id="bids" style="margin-top:12px"></div></div>
+  <!-- BUYER INCOMING -->
+  <div class="s" id="s6"><h2>Incoming boats</h2><p class="sub">Malpe Harbour · buyer view</p><div id="bi"></div></div>
+  <!-- GUARD -->
+  <div class="s" id="s7"><h2>Coast guard watch</h2><p class="sub">Malpe–Udupi sector · 12 boats</p>
+   <div class="map"><svg viewBox="0 0 340 170" width="100%"><rect width="340" height="170" rx="18" fill="#0b3a5e"/><path d="M0 150Q80 125 160 150T340 145V170H0Z" fill="#c9a96a"/><circle cx="90" cy="80" r="6" fill="#3ddc84"/><circle cx="150" cy="55" r="6" fill="#3ddc84"/><circle cx="230" cy="95" r="6" fill="#3ddc84"/><circle cx="270" cy="50" r="6" fill="#3ddc84"/><circle id="gdot" cx="180" cy="100" r="9" fill="#3ddc84"><animate attributeName="r" values="7;12;7" dur="1.6s" repeatCount="indefinite"/></circle></svg></div>
+   <div id="gl"></div><button class="btn alt" id="gbc">📡 Broadcast storm warning</button></div>
+  <!-- TRIP CHECK-IN -->
+  <div class="s" id="s8"><h2>Trip check-in</h2><p class="sub" id="tsub"></p><div class="card" id="tchk"></div><button class="btn ghost" id="tsos">🔔 Test SOS (nobody is alerted)</button>
+   <div class="card" style="margin-top:12px"><b>Crew on board</b><div class="stepper"><button id="cmn">−</button><b id="cq">2</b><span>people</span><button id="cpl">+</button></div><b>Back in</b><div class="stepper"><button id="rmn">−</button><b id="rq">6</b><span>hours</span><button id="rpl">+</button></div></div>
+   <button class="btn" id="tgo"></button><button class="btn ghost" id="tod" style="margin-top:10px;display:none">⏰ Simulate: return time passed</button></div>
+  <!-- PROFILE -->
+  <div class="s" id="s9"><div class="card" style="text-align:center"><div style="font-size:54px" id="pav">🎣</div><h2 id="pnm"></h2><p class="sub" id="pdt" style="margin:0"></p></div>
+   <div class="card"><b>Settings</b><div class="chk" id="tvo"><span>🔊 Voice guidance</span><i></i></div><div class="chk" id="tal"><span>🔔 Alerts</span><i></i></div><div class="chk fo" id="tmp"><span>🗺 Offline map (48 MB)</span><i></i></div><b class="fo">Safe zone radius</b><div class="stepper fo"><button id="zmn">−</button><b id="zq">10</b><span>km</span><button id="zpl">+</button></div></div>
+   <div class="card"><b>Emergency contacts</b><div class="sub" id="pec" style="margin:6px 0 0"></div></div>
+   <button class="btn ghost" id="ptour">▶ Replay feature tour</button><button class="btn ghost" id="pdemo" style="margin-top:10px">🎭 Demo: show role switcher</button><button class="btn" id="plog" style="margin-top:10px;background:#d6372f">Log out</button>
+  </div>
+ </div>
+ <div id="auth"></div>
+ <div class="toast" id="toast"></div>
+ <nav class="tabs" id="tabs">
+  <button class="tab on" data-i="0"><b>🌅</b>Dawn</button><button class="tab" data-i="1"><b>🧭</b>Sea</button>
+  <button class="tab" data-i="2"><b>🐟</b>Prices</button><button class="tab" data-i="3"><b>👩</b>Family</button><button class="tab" data-i="4"><b>📒</b>Diary</button></nav>
+</div>
+<p class="note">Ale Voice · Kannada-first, voice-first companion for coastal fishers. Sign in with 9876500021 (demo code 4821). Tap 🎙 or phrase chips to trigger the live FastAPI + Gnani AI pipeline.</p>
+
+<script src="app.js"></script>
+</body>
+</html>
