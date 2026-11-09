@@ -21,6 +21,7 @@ from apps.api.models import (
     TripCheck,
     Landing,
     Bid,
+    SosEvent,
 )
 from apps.api.services.nlu import NluEngine, NluResult
 from apps.api.services.lexicon import FISH_CATALOGUE
@@ -44,6 +45,7 @@ class VoiceOrchestrator:
         audio_bytes: Optional[bytes] = None,
         transcript_override: Optional[str] = None,
         stt_hint: float = 0.95,
+        noise: bool = False,
         db: Optional[AsyncSession] = None,
     ) -> Dict[str, Any]:
         """Execute full voice turn returning reply, state, and inspector timings."""
@@ -67,6 +69,7 @@ class VoiceOrchestrator:
             role=role,
             stt_hint=stt_res.confidence,
             session_pending=pending,
+            noise=noise,
         )
         nlu_ms = int((time.perf_counter() - nlu_t0) * 1000)
 
@@ -163,11 +166,11 @@ class VoiceOrchestrator:
 
         # --- REPAIR DISAMBIGUATION ---
         if nlu_res.decision == "repair":
-            opts = nlu_res.repair_options or ["ಬಂಗುಡೆ", "ಬೂತಾಯಿ"]
+            opts = nlu_res.repair_options or ["Mackerel", "Sardine"]
             opts_kn = [FISH_CATALOGUE.get(o, {}).get("name_kn", o) for o in opts]
             return {
                 "reply_kn": f"{opts_kn[0]}ನಾ ಅಥವಾ {opts_kn[1]}ನಾ?",
-                "reply_en": f"Low confidence: did you mean {opts[0]} or {opts[1]}?",
+                "reply_en": "Low confidence, so I ask instead of guessing: mackerel or sardine?",
             }
 
         if intent == "repair_select":
@@ -202,6 +205,22 @@ class VoiceOrchestrator:
 
         # --- READ-ONLY INTENTS ---
         if intent == "check_weather":
+            if db:
+                try:
+                    snap_res = await db.execute(
+                        select(WeatherSnapshot).order_by(WeatherSnapshot.created_at.desc()).limit(1)
+                    )
+                    snap = snap_res.scalar_one_or_none()
+                    if snap:
+                        verdict_colors = {"no_go": "#d6372f", "caution": "#f0a020", "go": "#1fa35b"}
+                        card_html = f'<span class="ic" style="background:{verdict_colors.get(snap.verdict, "#1fa35b")};color:#fff">{snap.verdict.replace("_", " ").title()}</span>'
+                        return {
+                            "reply_kn": snap.kn_summary,
+                            "reply_en": snap.en_summary,
+                            "card_html": card_html,
+                        }
+                except Exception:
+                    pass
             # Malpe harbour default weather: Go (wind 12, wave 0.8m)
             return {
                 "reply_kn": "ಹೋಗಬಹುದು. ಗಾಳಿ ಹನ್ನೆರಡು ಕಿಲೋಮೀಟರ್, ಅಲೆ ಒಂದು ಮೀಟರ್ ಒಳಗೆ.",
@@ -244,12 +263,66 @@ class VoiceOrchestrator:
 
         # Family Intents
         if intent == "boat_status":
+            if db:
+                try:
+                    sos_res = await db.execute(
+                        select(SosEvent).where(SosEvent.status.in_(["active", "dispatched"])).order_by(SosEvent.created_at.desc()).limit(1)
+                    )
+                    active_sos = sos_res.scalar_one_or_none()
+                    if active_sos:
+                        return {
+                            "reply_kn": "ತುರ್ತು ಎಚ್ಚರಿಕೆ! ದೋಣಿಯಿಂದ ಸಂಕಷ್ಟ ಸಂದೇಶ ಬಂದಿದೆ. ಕರಾವಳಿ ಕಾವಲು ಪಡೆಯನ್ನು ಸಂಪರ್ಕಿಸಲಾಗಿದೆ.",
+                            "reply_en": "Emergency alert! Boat reported distress. Coast Guard notified.",
+                            "card_html": '<span class="ic" style="background:#d6372f;color:#fff">Distress Alert</span>',
+                        }
+                    trip_res = await db.execute(
+                        select(Trip).order_by(Trip.created_at.desc()).limit(1)
+                    )
+                    trip = trip_res.scalar_one_or_none()
+                    if trip:
+                        if trip.status == "returning":
+                            return {
+                                "reply_kn": "ದೋಣಿ ವಾಪಸ್ ಬರ್ತಿದೆ, ದಡಕ್ಕೆ ಹತ್ತಿರದಲ್ಲಿದೆ.",
+                                "reply_en": "The boat is returning, heading towards Malpe harbour.",
+                            }
+                        elif trip.status == "landed":
+                            return {
+                                "reply_kn": "ದೋಣಿ ತೀರಕ್ಕೆ ಬಂದಿದೆ. ಸುರೇಶ್ ಸುರಕ್ಷಿತವಾಗಿದ್ದಾರೆ.",
+                                "reply_en": "The boat has landed safely at the harbour.",
+                            }
+                        elif trip.status == "overdue":
+                            return {
+                                "reply_kn": "ದೋಣಿ ನಿರೀಕ್ಷಿತ ಸಮಯಕ್ಕಿಂತ ತಡವಾಗಿದೆ. ಎಚ್ಚರಿಕೆ ನೀಡಲಾಗಿದೆ.",
+                                "reply_en": "The boat is overdue. Alerts have been sent.",
+                                "card_html": '<span class="ic" style="background:#f0a020;color:#fff">Overdue</span>',
+                            }
+                except Exception:
+                    pass
             return {
                 "reply_kn": "ದೋಣಿ ಸಮುದ್ರದಲ್ಲಿದೆ, ಸುರಕ್ಷಿತ ವಲಯದಲ್ಲಿ.",
                 "reply_en": "The boat is at sea, inside the safe zone.",
             }
 
         if intent == "get_eta":
+            if db:
+                try:
+                    trip_res = await db.execute(
+                        select(Trip).order_by(Trip.created_at.desc()).limit(1)
+                    )
+                    trip = trip_res.scalar_one_or_none()
+                    if trip:
+                        if trip.status == "landed":
+                            return {
+                                "reply_kn": "ದೋಣಿ ಈಗಾಗಲೇ ತೀರಕ್ಕೆ ತಲುಪಿದೆ.",
+                                "reply_en": "The boat has already reached the shore.",
+                            }
+                        eta_text = trip.eta_text or "11:55 AM"
+                        return {
+                            "reply_kn": f"ಸುಮಾರು {eta_text} ಒಳಗೆ ಬರ್ತಾರೆ.",
+                            "reply_en": f"Expected back by {eta_text}.",
+                        }
+                except Exception:
+                    pass
             return {
                 "reply_kn": "ಸುಮಾರು 11:55 AM ಒಳಗೆ ಬರ್ತಾರೆ.",
                 "reply_en": "Expected back by 11:55 AM.",
@@ -368,6 +441,21 @@ class VoiceOrchestrator:
                     status="announced",
                 )
                 db.add(landing)
+                await db.commit()
+
+            elif intent == "tick_checklist":
+                trip_res = await db.execute(
+                    select(Trip).where(Trip.fisher_user_id == user_id).order_by(Trip.created_at.desc()).limit(1)
+                )
+                trip = trip_res.scalar_one_or_none()
+                trip_id = trip.id if trip else str(uuid.uuid4())
+                items = slots.get("items") or ["life_jackets", "fuel"]
+                for item_key in items:
+                    db.add(TripCheck(
+                        trip_id=trip_id,
+                        check_key=item_key,
+                        is_checked=True,
+                    ))
                 await db.commit()
         except Exception:
             pass

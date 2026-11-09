@@ -2,6 +2,7 @@
 """Speech-to-Text and Text-to-Speech providers with Gnani AI and local mock adapters."""
 
 import asyncio
+import base64
 import hashlib
 import json
 import os
@@ -168,7 +169,16 @@ class GnaniTts:
                             await asyncio.sleep(0.5 + random.uniform(0.1, 0.4))
                             continue
                         response.raise_for_status()
-                        audio_data = response.content
+                        content_type = response.headers.get("content-type", "").lower()
+                        if "application/json" in content_type:
+                            resp_json = response.json()
+                            b64_audio = resp_json.get("audio") or resp_json.get("audio_content") or resp_json.get("data")
+                            if b64_audio:
+                                audio_data = base64.b64decode(b64_audio)
+                            else:
+                                audio_data = response.content
+                        else:
+                            audio_data = response.content
                         # Save to cache
                         with open(cached_file, "wb") as f:
                             f.write(audio_data)

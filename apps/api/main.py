@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from apps.api.core.config import settings
 from apps.api.core.database import init_db
+from apps.api.core.seed import seed_database
 from apps.api.routers.voice import router as voice_router
 from apps.api.routers.auth import router as auth_router
 from apps.api.routers.weather import router as weather_router
@@ -21,8 +22,9 @@ from apps.api.routers.sync import router as sync_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan: init DB on startup."""
+    """Application lifespan: init DB and seed core data on startup."""
     await init_db()
+    await seed_database()
     yield
 
 
@@ -41,6 +43,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {
+        "status": "ok",
+        "mock_providers": settings.mock_providers,
+        "db_type": "sqlite" if settings.use_sqlite else "postgresql",
+    }
+
+
 app.include_router(voice_router)
 app.include_router(auth_router)
 app.include_router(weather_router)
@@ -51,18 +64,12 @@ app.include_router(family_router)
 app.include_router(guard_router)
 app.include_router(sync_router)
 
-# Mount frontend PWA shell
+# Mount audio cache for synthesized speech playback
+os.makedirs("audio_cache", exist_ok=True)
+app.mount("/api/v1/audio", StaticFiles(directory="audio_cache"), name="audio_cache")
+
+# Mount frontend PWA shell (must be mounted last)
 web_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
 if os.path.exists(web_dir):
     app.mount("/", StaticFiles(directory=web_dir, html=True), name="static")
-
-
-@app.get("/health")
-async def health():
-    """Health check endpoint."""
-    return {
-        "status": "ok",
-        "mock_providers": settings.mock_providers,
-        "db_type": "sqlite" if settings.use_sqlite else "postgresql",
-    }
 

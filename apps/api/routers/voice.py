@@ -20,6 +20,7 @@ class VoiceTurnRequest(BaseModel):
     phone: str = "9876500021"
     role: str = "fisher"
     transcript: Optional[str] = None
+    noise: bool = False
 
 
 class VoiceConfirmRequest(BaseModel):
@@ -43,6 +44,7 @@ async def process_voice_turn(
     role: str = Form("fisher"),
     transcript: Optional[str] = Form(None),
     audio_file: Optional[UploadFile] = File(None),
+    noise: bool = Form(False),
     db: AsyncSession = Depends(get_db),
 ):
     """Main voice turn: speech/text in -> NLU + action + timings + audio out."""
@@ -57,6 +59,7 @@ async def process_voice_turn(
         role=role,
         audio_bytes=audio_bytes,
         transcript_override=transcript,
+        noise=noise,
         db=db,
     )
     result["session_token"] = token

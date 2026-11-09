@@ -1,6 +1,12 @@
 # WHY: TR-TEST-01 — Pytest fixtures for Ale Voice
 """Test configuration and async fixtures."""
 
+import os
+import sys
+
+# Ensure repository root is in python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from apps.api.main import app

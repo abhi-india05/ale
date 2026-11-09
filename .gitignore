@@ -112,6 +112,8 @@ htmlcov/
 .agents/
 .codex/
 AGENTS.md
+STATUS.md
+SPEC_DIGEST.md
 graphify_out
 .graphifyignore
 # ==========================================
