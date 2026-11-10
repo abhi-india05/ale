@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Ale Voice",
+    "slug": "ale-voice",
+    "version": "1.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "alevoice",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1522"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "in.alevoice.mobile",
+      "infoPlist": {
+        "UIBackgroundModes": ["location", "audio", "fetch", "remote-notification"],
+        "NSLocationWhenInUseUsageDescription": "Ale Voice tracks your fishing voyage and reports safety status to your family and Coast Guard.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Ale Voice requires background location to track your boat even when your screen is off.",
+        "NSMicrophoneUsageDescription": "Ale Voice uses your microphone to transcribe voice queries in Kannada."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b1522"
+      },
+      "package": "in.alevoice.mobile",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK",
+        "android.permission.VIBRATE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Ale Voice needs continuous GPS access to monitor your boat's safety while at sea.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Ale Voice needs microphone access to listen to Kannada commands."
+        }
+      ],
+      "expo-secure-store"
+    ]
+  }
+}
+

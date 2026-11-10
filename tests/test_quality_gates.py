@@ -207,3 +207,96 @@ async def test_g4_idempotent_outbox(client: AsyncClient):
     async with async_session() as db:
         q_entries = await db.execute(select(LedgerEntry).where(LedgerEntry.client_op_id == unique_op_1))
         assert len(q_entries.scalars().all()) == 1, "Duplicate ledger entry found in DB!"
+
+
+# ==============================================================================
+# QUALITY GATE G5: Spec v1.1 Mobile Tracking, Health Heartbeat & Version Gate
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_g5_v11_mobile_tracking_and_health(client: AsyncClient):
+    """G5: Verify device registration, N-15 degraded heartbeat alerts, GPS deduplication, version gate, and admin overview."""
+    # 1. Device Registration (D17, D18)
+    reg_res = await client.post("/api/v1/devices/register", json={
+        "phone": "9876500021",
+        "platform": "android",
+        "push_token": "fcm_token_g5_test",
+        "app_version": "1.1.0",
+        "os_version": "Android 14",
+        "device_model": "Xiaomi Redmi Note 12 5G",
+        "locale": "kn-IN",
+    })
+    assert reg_res.status_code == 200
+    reg_data = reg_res.json()
+    assert reg_data["status"] == "registered"
+    device_id = reg_data["device_id"]
+
+    # 2. Healthy & Degraded Heartbeats (D17, N-15)
+    h_res = await client.post("/api/v1/devices/health", json={
+        "device_id": device_id,
+        "phone": "9876500021",
+        "tracking_state": "running",
+        "location_permission": "always",
+        "battery_pct": 86,
+        "reason": "Foreground service running",
+    })
+    assert h_res.status_code == 200
+    assert h_res.json()["tracking_state"] == "running"
+
+    # Degraded heartbeat creates N-15 Alert
+    deg_res = await client.post("/api/v1/devices/health", json={
+        "device_id": device_id,
+        "phone": "9876500021",
+        "tracking_state": "degraded",
+        "location_permission": "always",
+        "battery_pct": 14,
+        "reason": "Battery manager killed service (N-15)",
+    })
+    assert deg_res.status_code == 200
+    assert deg_res.json()["tracking_state"] == "degraded"
+
+    async with async_session() as db:
+        a_res = await db.execute(select(Alert).where(Alert.alert_type == "tracking_degraded"))
+        alerts = a_res.scalars().all()
+        assert len(alerts) > 0, "N-15 tracking degraded alert was not created!"
+
+    # 3. OEM Battery Guidance (FR-SET-02)
+    gh_res = await client.get("/api/v1/devices/health?phone=9876500021")
+    assert gh_res.status_code == 200
+    gh_data = gh_res.json()
+    assert "oem_guidance" in gh_data
+    assert "Battery" in gh_data["oem_guidance"] or "restrictions" in gh_data["oem_guidance"]
+
+    # 4. Batched GPS Positions Deduplication (TR-CLI-11, TR-OFF-03)
+    pos_op_1 = f"pos_g5_{uuid.uuid4().hex[:8]}"
+    pos_op_2 = f"pos_g5_{uuid.uuid4().hex[:8]}"
+    batch_pos = {
+        "phone": "9876500021",
+        "positions": [
+            {"lat": 13.35, "lon": 74.69, "speed_kn": 6.8, "client_op_id": pos_op_1},
+            {"lat": 13.36, "lon": 74.68, "speed_kn": 7.0, "client_op_id": pos_op_2},
+            {"lat": 13.36, "lon": 74.68, "speed_kn": 7.0, "client_op_id": pos_op_1},  # Duplicate op
+        ],
+    }
+    p_res = await client.post("/api/v1/trips/positions", json=batch_pos)
+    assert p_res.status_code == 200
+    p_data = p_res.json()
+    assert p_data["saved"] == 2
+    assert p_data["duplicates_skipped"] == 1
+    assert p_data["continuity_pct"] > 90.0
+
+    # 5. Remote Version Gate (TR-CLI-15)
+    v11_res = await client.get("/api/v1/app/version?client_version=1.1.0")
+    assert v11_res.status_code == 200
+    assert v11_res.json()["force_update"] is False
+
+    v10_res = await client.get("/api/v1/app/version?client_version=1.0.0")
+    assert v10_res.status_code == 200
+    assert v10_res.json()["force_update"] is True
+
+    # 6. Admin Console Overview (ADM-1 - ADM-5)
+    adm_res = await client.get("/api/v1/admin/overview")
+    assert adm_res.status_code == 200
+    adm_data = adm_res.json()
+    assert adm_data["alias_count"] > 0
+    assert adm_data["user_count"] > 0
+

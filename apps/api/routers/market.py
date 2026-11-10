@@ -18,7 +18,16 @@ router = APIRouter(prefix="/api/v1/market", tags=["market"])
 
 class OfferCheckRequest(BaseModel):
     species: str
-    offer_per_kg: float
+    offer_per_kg: Optional[float] = None
+    offer_price: Optional[float] = None
+
+    @property
+    def effective_offer(self) -> float:
+        if self.offer_per_kg is not None:
+            return self.offer_per_kg
+        if self.offer_price is not None:
+            return self.offer_price
+        return 100.0
 
 
 class LandingRequest(BaseModel):
@@ -29,10 +38,19 @@ class LandingRequest(BaseModel):
 
 
 class PlaceBidRequest(BaseModel):
-    landing_id: str
+    landing_id: Optional[str] = None
     buyer_name: str = "Rafiq, Harbour Agent"
     buyer_phone: str = "9876500031"
-    bid_per_kg: float
+    bid_per_kg: Optional[float] = None
+    bid_price_per_kg: Optional[float] = None
+
+    @property
+    def price(self) -> float:
+        if self.bid_per_kg is not None:
+            return self.bid_per_kg
+        if self.bid_price_per_kg is not None:
+            return self.bid_price_per_kg
+        return 100.0
 
 
 @router.get("/prices")
@@ -59,7 +77,7 @@ async def check_offer(req: OfferCheckRequest):
     """Evaluate whether a buyer's offer is low, fair, or great."""
     info = FISH_CATALOGUE.get(req.species, FISH_CATALOGUE["Sardine"])
     lo, hi = info["price_range"]
-    offer = req.offer_per_kg
+    offer = req.effective_offer
 
     if offer < lo:
         verdict = "Too low"
@@ -81,7 +99,10 @@ async def check_offer(req: OfferCheckRequest):
         "species": req.species,
         "offer": offer,
         "range": [lo, hi],
+        "range_min": lo,
+        "range_max": hi,
         "verdict": verdict,
+        "verdict_en": verdict,
         "advice_en": advice_en,
         "advice_kn": advice_kn,
         "color": color,
@@ -113,12 +134,13 @@ async def create_landing(req: LandingRequest, db: AsyncSession = Depends(get_db)
 
     # Pre-generate 3 buyer bids for demo flow (Rafiq, Fish Mart, Hotel Mitra)
     lo, hi = FISH_CATALOGUE.get(req.species, {}).get("price_range", (90, 110))
-    mid = round((lo + hi) / 2)
+    mid_price = round((lo + hi) / 2)
     sample_bids = [
         ("Rafiq, Harbour Agent", "🧑‍💼", lo),
-        ("Fish Mart Udupi", "🏪", mid),
+        ("Fish Mart Udupi", "🏪", mid_price),
         ("Hotel Mitra", "🏨", hi),
     ]
+    created_bids = []
     for b_name, b_emoji, b_price in sample_bids:
         b_user = await db.execute(select(User).where(User.role == "buyer"))
         buyer = b_user.scalars().first()
@@ -130,7 +152,18 @@ async def create_landing(req: LandingRequest, db: AsyncSession = Depends(get_db)
             status="pending",
         )
         db.add(bid_item)
+        created_bids.append(bid_item)
     await db.commit()
+
+    bids_out = [
+        {
+            "id": b.id,
+            "buyer_name": b.buyer_name,
+            "bid_price_per_kg": b.bid_price_per_kg,
+            "status": b.status,
+        }
+        for b in created_bids
+    ]
 
     return {
         "status": "announced",
@@ -140,6 +173,7 @@ async def create_landing(req: LandingRequest, db: AsyncSession = Depends(get_db)
         "eta_min": req.eta_min,
         "notified_buyers": 12,
         "message": f"📣 12 buyers notified. ETA {req.eta_min} min.",
+        "bids": bids_out,
     }
 
 
@@ -168,16 +202,27 @@ async def list_incoming_landings(db: AsyncSession = Depends(get_db)):
 @router.post("/landings/{landing_id}/bids")
 async def place_bid(landing_id: str, req: PlaceBidRequest, db: AsyncSession = Depends(get_db)):
     """Buyer submits bid for announced catch."""
+    actual_landing_id = landing_id
+    if landing_id == "active":
+        active_res = await db.execute(
+            select(Landing).where(Landing.status == "announced").order_by(Landing.created_at.desc()).limit(1)
+        )
+        act_l = active_res.scalar_one_or_none()
+        if act_l:
+            actual_landing_id = act_l.id
+        else:
+            actual_landing_id = str(uuid.uuid4())
+
     bid = Bid(
-        landing_id=landing_id,
+        landing_id=actual_landing_id,
         buyer_user_id=str(uuid.uuid4()),
         buyer_name=req.buyer_name,
-        bid_price_per_kg=req.bid_per_kg,
+        bid_price_per_kg=req.price,
         status="pending",
     )
     db.add(bid)
     await db.commit()
-    return {"status": "bid_placed", "bid_id": bid.id, "amount": req.bid_per_kg}
+    return {"status": "bid_placed", "bid_id": bid.id, "amount": req.price, "landing_id": actual_landing_id}
 
 
 @router.post("/bids/{bid_id}/accept")

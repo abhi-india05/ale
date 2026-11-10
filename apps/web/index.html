@@ -97,6 +97,10 @@ h2{font-size:20px;margin:6px 0 2px}.sub{color:var(--sub);font-size:14px;margin-b
 <div class="phone" id="ph">
  <div class="top"><div class="logo">ale<span>~</span></div>
   <div class="pills"><button class="pill" id="lg">EN</button><button class="pill" id="th">☀️ Day</button><button class="pill" id="xl">A+</button><button class="pill" id="pf">👤</button></div></div><div class="chips" id="roles" style="padding:0 16px;margin:0 0 4px;flex-wrap:nowrap;gap:6px"></div>
+ <div id="fg-notif" style="display:none;background:#0d2338;color:#8fd0ff;border:1.5px solid #1fa35b;border-radius:14px;padding:8px 12px;margin:0 14px 6px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);align-items:center;justify-content:space-between">
+  <div>⛵ <b>Trip active</b> · Foreground GPS tracking (60s) · <span id="fg-bat">86%</span> 🔋</div>
+  <div style="font-size:10px;color:#3ddc84;text-transform:uppercase;font-weight:700">Health ›</div>
+ </div>
  <div class="screens">
   <!-- DAWN -->
   <div class="s on" id="s0">
@@ -116,6 +120,7 @@ h2{font-size:20px;margin:6px 0 2px}.sub{color:var(--sub);font-size:14px;margin-b
   <!-- SEA -->
   <div class="s" id="s1">
    <h2>Sea mode</h2><p class="sub">Offline · GPS on · 3 boats nearby</p>
+   <div class="alertbar" id="sea-n15" style="display:none;background:#f0a020;cursor:pointer;margin-bottom:10px">⚠️ <b>N-15 Alert:</b> Trip tracking has stopped. Tap to fix it.</div>
    <div class="map"><svg viewBox="0 0 340 230" width="100%">
     <rect width="340" height="230" rx="18" fill="#0b3a5e"/>
     <path d="M0 200Q60 170 120 205T240 195T340 210V230H0Z" fill="#c9a96a"/>
@@ -175,7 +180,58 @@ h2{font-size:20px;margin:6px 0 2px}.sub{color:var(--sub);font-size:14px;margin-b
   <div class="s" id="s9"><div class="card" style="text-align:center"><div style="font-size:54px" id="pav">🎣</div><h2 id="pnm"></h2><p class="sub" id="pdt" style="margin:0"></p></div>
    <div class="card"><b>Settings</b><div class="chk" id="tvo"><span>🔊 Voice guidance</span><i></i></div><div class="chk" id="tal"><span>🔔 Alerts</span><i></i></div><div class="chk fo" id="tmp"><span>🗺 Offline map (48 MB)</span><i></i></div><b class="fo">Safe zone radius</b><div class="stepper fo"><button id="zmn">−</button><b id="zq">10</b><span>km</span><button id="zpl">+</button></div></div>
    <div class="card"><b>Emergency contacts</b><div class="sub" id="pec" style="margin:6px 0 0"></div></div>
-   <button class="btn ghost" id="ptour">▶ Replay feature tour</button><button class="btn ghost" id="pdemo" style="margin-top:10px">🎭 Demo: show role switcher</button><button class="btn" id="plog" style="margin-top:10px;background:#d6372f">Log out</button>
+   <button class="btn ghost" id="ptour">▶ Replay feature tour</button><button class="btn ghost" id="phealth" style="margin-top:10px">⚙️ Tracking Health (PRO-2)</button><button class="btn ghost" id="pdemo" style="margin-top:10px">🎭 Demo: show role switcher</button><button class="btn" id="plog" style="margin-top:10px;background:#d6372f">Log out</button>
+  </div>
+  <!-- PRO-2 TRACKING HEALTH -->
+  <div class="s" id="s10">
+   <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <button class="pill" id="hlth-back" style="font-size:16px;padding:6px 12px">‹ Back</button>
+    <h2 style="margin:0;font-size:20px">Tracking Health</h2>
+   </div>
+   <p class="sub" style="margin-top:-6px">PRO-2 · ಟ್ರ್ಯಾಕಿಂಗ್ ಆರೋಗ್ಯ · Spec v1.1 D17</p>
+
+   <div class="card" id="hlth-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+     <b>Service State</b>
+     <span id="h-state" style="background:#1fa35b22;color:#1fa35b;padding:4px 8px;border-radius:10px;font-size:12px;font-weight:700">● Running (Foreground)</span>
+    </div>
+    <div class="row" style="font-size:13px;padding:6px 0;border-top:1px solid var(--line)">
+     <span class="sub">Location Permission:</span>
+     <b id="h-loc" style="color:#1fa35b">Always allow (granted)</b>
+    </div>
+    <div class="row" style="font-size:13px;padding:6px 0;border-top:1px solid var(--line)">
+     <span class="sub">Critical Alerts:</span>
+     <b id="h-notif" style="color:#1fa35b">Notifications enabled</b>
+    </div>
+    <div class="row" style="font-size:13px;padding:6px 0;border-top:1px solid var(--line)">
+     <span class="sub">Battery Optimization:</span>
+     <b id="h-bat-opt" style="color:#1fa35b">Whitelisted (No restrictions)</b>
+    </div>
+    <div class="row" style="font-size:13px;padding:6px 0;border-top:1px solid var(--line)">
+     <span class="sub">GPS Sampling:</span>
+     <b>60s interval · ~15m accuracy</b>
+    </div>
+    <div class="row" style="font-size:13px;padding:6px 0;border-top:1px solid var(--line)">
+     <span class="sub">Batched Upload:</span>
+     <b id="h-sync">Synced (0 pending in outbox)</b>
+    </div>
+    <div class="row" style="font-size:13px;padding:6px 0;border-top:1px solid var(--line)">
+     <span class="sub">Device & OS:</span>
+     <b id="h-dev">Xiaomi Redmi Note 12 · Android 14</b>
+    </div>
+   </div>
+
+   <div class="card" style="margin-top:12px">
+    <b>OEM Background Killer Guide (FR-SET-02)</b>
+    <p class="sub" id="h-oem-guide" style="margin:8px 0 0;font-size:13px;line-height:1.4">
+     Xiaomi / Redmi: Settings &gt; Apps &gt; Manage Apps &gt; Ale Voice &gt; Battery Saver &gt; Set to 'No restrictions'. Enable Autostart.
+    </p>
+   </div>
+
+   <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+    <button class="btn alt" id="h-sim-fail" style="background:#d6372f">⚠️ Simulate: Battery Saver killed service (N-15)</button>
+    <button class="btn" id="h-fix-resume" style="background:#1fa35b">✅ One-tap Fix &amp; Resume Service</button>
+   </div>
   </div>
  </div>
  <div id="auth"></div>

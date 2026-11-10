@@ -18,6 +18,8 @@ from apps.api.routers.diary import router as diary_router
 from apps.api.routers.family import router as family_router
 from apps.api.routers.guard import router as guard_router
 from apps.api.routers.sync import router as sync_router
+from apps.api.routers.devices import devices_router, app_router
+from apps.api.routers.admin import admin_router
 
 
 @asynccontextmanager
@@ -63,10 +65,18 @@ app.include_router(diary_router)
 app.include_router(family_router)
 app.include_router(guard_router)
 app.include_router(sync_router)
+app.include_router(devices_router)
+app.include_router(app_router)
+app.include_router(admin_router)
 
 # Mount audio cache for synthesized speech playback
 os.makedirs("audio_cache", exist_ok=True)
 app.mount("/api/v1/audio", StaticFiles(directory="audio_cache"), name="audio_cache")
+
+# Mount Admin Console (must be mounted before root static)
+admin_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "admin")
+if os.path.exists(admin_dir):
+    app.mount("/admin", StaticFiles(directory=admin_dir, html=True), name="admin")
 
 # Mount frontend PWA shell (must be mounted last)
 web_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")

@@ -45,6 +45,7 @@ class User(Base, IdMixin, TimestampMixin):
     boats: Mapped[List["Boat"]] = relationship(back_populates="owner")
     trips: Mapped[List["Trip"]] = relationship(back_populates="fisher")
     ledger_entries: Mapped[List["LedgerEntry"]] = relationship(back_populates="user")
+    devices: Mapped[List["Device"]] = relationship(back_populates="user")
 
 
 # WHY: FR-PROF-01, FR-PROF-02 — Fisher-specific profile settings & emergency contacts
@@ -163,6 +164,7 @@ class Trip(Base, IdMixin, TimestampMixin):
     checks: Mapped[List["TripCheck"]] = relationship(back_populates="trip")
     spots: Mapped[List["FishSpot"]] = relationship(back_populates="trip")
     landings: Mapped[List["Landing"]] = relationship(back_populates="trip")
+    positions: Mapped[List["TripPosition"]] = relationship(back_populates="trip")
 
 
 # WHY: FR-TRP-02, FR-VOX-06 — Safety pre-sail checklist items
@@ -352,3 +354,73 @@ class AuditLog(Base, IdMixin, TimestampMixin):
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
     entity_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     details_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+# WHY: D17, D18, TR-CLI-14, TR-CLI-15 — Device registration & FCM push token management
+class Device(Base, IdMixin, TimestampMixin):
+    """Registered user device with push token, platform, and OS version."""
+    __tablename__ = "devices"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    platform: Mapped[str] = mapped_column(String(20), default="android", nullable=False)  # android, ios, web
+    push_provider: Mapped[str] = mapped_column(String(20), default="fcm", nullable=False)
+    push_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    app_version: Mapped[str] = mapped_column(String(20), default="1.1.0", nullable=False)
+    os_version: Mapped[str] = mapped_column(String(50), default="Android 14", nullable=False)
+    device_model: Mapped[str] = mapped_column(String(100), default="Redmi Note 12", nullable=False)
+    locale: Mapped[str] = mapped_column(String(10), default="kn", nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="devices")
+    health_reports: Mapped[List["DeviceHealthReport"]] = relationship(back_populates="device")
+
+
+# WHY: FR-SEA-07, FR-SET-02, TR-CLI-12, D17 — PRO-2 Tracking Health & OEM Battery Monitor
+class DeviceHealthReport(Base, IdMixin, TimestampMixin):
+    """Device tracking health heartbeat feeding PRO-2 screen and family last-seen."""
+    __tablename__ = "device_health_reports"
+
+    device_id: Mapped[str] = mapped_column(ForeignKey("devices.id"), nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    trip_id: Mapped[Optional[str]] = mapped_column(ForeignKey("trips.id"), nullable=True)
+    reported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    tracking_state: Mapped[str] = mapped_column(String(20), default="running", nullable=False)  # running, degraded, stopped
+    location_permission: Mapped[str] = mapped_column(String(20), default="always", nullable=False)  # none, foreground, always
+    notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    battery_optimised: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    gps_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    battery_pct: Mapped[int] = mapped_column(Integer, default=86, nullable=False)
+    network: Mapped[str] = mapped_column(String(20), default="good", nullable=False)  # good, poor, none
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    device: Mapped["Device"] = relationship(back_populates="health_reports")
+
+
+# WHY: FR-SEA-02, TR-CLI-11, TR-OFF-03, D17 — Screen-off 60s foreground location track
+class TripPosition(Base, IdMixin, TimestampMixin):
+    """Batched GPS positions uploaded by Android background location service."""
+    __tablename__ = "trip_positions"
+
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id"), nullable=False)
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lon: Mapped[float] = mapped_column(Float, nullable=False)
+    accuracy_m: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
+    speed_kn: Mapped[float] = mapped_column(Float, default=6.5, nullable=False)
+    heading: Mapped[float] = mapped_column(Float, default=240.0, nullable=False)
+    provider: Mapped[str] = mapped_column(String(20), default="gps", nullable=False)  # gps, fused, network
+    battery_pct: Mapped[int] = mapped_column(Integer, default=86, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    client_op_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+
+    trip: Mapped["Trip"] = relationship(back_populates="positions")
+
+
+# WHY: FR-APP-01, TR-CLI-15 — Remote feature flags and minimum supported client versions
+class FeatureFlag(Base):
+    """Dynamic platform toggles and minimum app version gating."""
+    __tablename__ = "feature_flags"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    payload_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

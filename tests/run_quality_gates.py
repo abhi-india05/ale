@@ -18,12 +18,13 @@ from tests.test_quality_gates import (
     test_g2_zero_unconfirmed_voice_writes,
     test_g3_multirole_safety_flow,
     test_g4_idempotent_outbox,
+    test_g5_v11_mobile_tracking_and_health,
 )
 
 
 async def main():
     print("=" * 60)
-    print("ALE VOICE — QUALITY GATES G1–G4 VERIFICATION SUITE")
+    print("ALE VOICE — QUALITY GATES G1–G5 VERIFICATION SUITE (SPEC v1.1)")
     print("=" * 60)
 
     await init_db()
@@ -54,8 +55,14 @@ async def main():
         await test_g4_idempotent_outbox(client)
         print(f"✔ G4 PASSED ({int((time.perf_counter() - t0) * 1000)} ms)")
 
+        # Gate G5
+        print("\n▶ Running Quality Gate G5 (v1.1 Mobile Tracking, Health Heartbeat & Version Gate)...")
+        t0 = time.perf_counter()
+        await test_g5_v11_mobile_tracking_and_health(client)
+        print(f"✔ G5 PASSED ({int((time.perf_counter() - t0) * 1000)} ms)")
+
     print("\n" + "=" * 60)
-    print("ALL 4 QUALITY GATES (G1, G2, G3, G4) PASSED PERFECTLY!")
+    print("ALL 5 QUALITY GATES (G1, G2, G3, G4, G5) PASSED PERFECTLY!")
     print("=" * 60)
     await engine.dispose()
 

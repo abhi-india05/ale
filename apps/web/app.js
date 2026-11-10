@@ -66,6 +66,7 @@ function show(i) {
   if (+i === 7) fetchGuardWatch();
   if (+i === 8) { tp(); tsub(); }
   if (+i === 9) pr();
+  if (+i === 10) fetchTrackingHealth();
   fab();
 }
 
@@ -138,7 +139,7 @@ const W = [
   { c: '#d6372f', l: 'Don’t go', k: 'ಹೋಗಬೇಡಿ', w: '45', v: '3.5 m', g: 60 }
 ];
 let wi = 0;
-function applyWeather(idx) {
+async function applyWeather(idx) {
   wi = idx % 3;
   const d = W[wi];
   $('hero').style.background = d.c;
@@ -160,6 +161,13 @@ function applyWeather(idx) {
   if (wi === 2) {
     fAlert('🌩 Storm warning: Suresh is advised to stay ashore', 'amber');
   }
+  try {
+    await fetch(`${API_BASE}/api/v1/weather/simulate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verdict: ['go', 'caution', 'no_go'][wi] })
+    });
+  } catch (e) {}
 }
 
 // --- REST API CALLS ---
@@ -218,9 +226,16 @@ function setFam(i) {
   const steps = q('.step');
   if (steps[i]) steps[i].click();
 }
-$('home').onclick = () => {
+$('home').onclick = async () => {
   setFam(1);
   toast('🏠 Arrow guiding you home · family told');
+  try {
+    await fetch(`${API_BASE}/api/v1/trips/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: S.user ? S.user.phone : '9876500021', status: 'returning' })
+    });
+  } catch (e) {}
 };
 
 function fAlert(m, c) {
@@ -305,18 +320,18 @@ async function ck() {
     const res = await fetch(`${API_BASE}/api/v1/market/offer-check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ species: fo, offer_price: oq })
+      body: JSON.stringify({ species: fo, offer_per_kg: oq })
     });
     if (res.ok) {
       const d = await res.json();
-      v.textContent = d.verdict_en + ` (₹${d.range_min}–${d.range_max})`;
-      v.style.background = d.verdict === 'great' ? '#1fa35b' : d.verdict === 'low' ? '#d6372f' : '#0a4d7a';
+      v.textContent = d.advice_en || (d.verdict + ` (₹${d.range_min}–${d.range_max})`);
+      v.style.background = d.color || (d.verdict === 'great' ? '#1fa35b' : d.verdict === 'low' ? '#d6372f' : '#0a4d7a');
       return;
     }
   } catch (e) {}
   const [lo, hi] = PR[fo] || [90, 110];
-  const a = oq < lo ? ['Too low. Ask for more', '#d6372f'] : oq > hi ? ['Great offer. Take it!', '#1fa35b'] : ['Fair price', '#0a4d7a'];
-  v.textContent = a[0] + ' (₹' + lo + '–' + hi + ')';
+  const a = oq < lo ? ['Too low. Ask for more (₹' + lo + '–' + hi + ')', '#d6372f'] : oq > hi ? ['Great offer. Take it! (₹' + lo + '–' + hi + ')', '#1fa35b'] : ['Fair price (₹' + lo + '–' + hi + ')', '#0a4d7a'];
+  v.textContent = a[0];
   v.style.background = a[1];
 }
 
@@ -433,8 +448,9 @@ $('lnotify').onclick = async () => {
   rb();
   setFam(1);
   toast('📣 12 buyers notified · ETA 40 min');
+  let backendBids = null;
   try {
-    await fetch(`${API_BASE}/api/v1/market/landings`, {
+    const res = await fetch(`${API_BASE}/api/v1/market/landings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -444,15 +460,28 @@ $('lnotify').onclick = async () => {
         eta_min: 40
       })
     });
+    if (res.ok) {
+      const data = await res.json();
+      backendBids = data.bids;
+    }
   } catch (e) {}
 
-  const [lo, hi] = PR[lf];
-  [['Rafiq, Harbour Agent', '🧑‍💼', lo], ['Fish Mart Udupi', '🏪', mid(lf)], ['Hotel Mitra', '🏨', hi]].forEach((x, j) => {
-    setTimeout(() => {
-      S.bids.push({ id: 'bid_' + Date.now() + '_' + j, n: x[0], e: x[1], p: x[2], f: lf, kg: kq });
-      bidsR();
-    }, 1200 * (j + 1));
-  });
+  if (backendBids && backendBids.length) {
+    backendBids.forEach((b, j) => {
+      setTimeout(() => {
+        S.bids.push({ id: b.id, n: b.buyer_name, e: '🧑‍💼', p: b.bid_price_per_kg, f: lf, kg: kq });
+        bidsR();
+      }, 1200 * (j + 1));
+    });
+  } else {
+    const [lo, hi] = PR[lf];
+    [['Rafiq, Harbour Agent', '🧑‍💼', lo], ['Fish Mart Udupi', '🏪', mid(lf)], ['Hotel Mitra', '🏨', hi]].forEach((x, j) => {
+      setTimeout(() => {
+        S.bids.push({ id: 'bid_' + Date.now() + '_' + j, n: x[0], e: x[1], p: x[2], f: lf, kg: kq });
+        bidsR();
+      }, 1200 * (j + 1));
+    });
+  }
 };
 
 function rb() {
@@ -482,7 +511,7 @@ function rb() {
         await fetch(`${API_BASE}/api/v1/market/landings/active/bids`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buyer_name: 'You (Buyer)', bid_price_per_kg: bp })
+          body: JSON.stringify({ buyer_name: 'You (Buyer)', bid_per_kg: bp, bid_price_per_kg: bp })
         });
       } catch (e) {}
       toast('Bid sent: ₹' + bp + '/kg');
@@ -628,6 +657,7 @@ function tsub() {
   $('tgo').textContent = T ? '🏁 ' + (S.lang ? 'ಪ್ರಯಾಣ ಮುಗಿಸಿ' : 'End trip (landed)') : '⛵ ' + (S.lang ? 'ಪ್ರಯಾಣ ಪ್ರಾರಂಭಿಸಿ' : 'Start trip');
   $('tsub').textContent = T ? (S.lang ? 'ಪ್ರಯಾಣ ನಡೆಯುತ್ತಿದೆ · ' + T.eta + ' ಒಳಗೆ ವಾಪಸ್' : 'Trip active · ' + S.crew + ' crew · back by ' + T.eta) : (S.lang ? 'ಹೊರಡುವ ಮುನ್ನ ಪರಿಶೀಲಿಸಿ' : 'Check before you sail');
   $('tod').style.display = T ? 'block' : 'none';
+  updateFgNotif();
 }
 
 $('tchk').onclick = e => {
@@ -685,8 +715,8 @@ $('tgo').onclick = async () => {
       body: JSON.stringify({
         phone: S.user ? S.user.phone : '9876500021',
         crew_count: S.crew,
-        duration_hours: S.ret,
-        checklist_items: ['life_jackets', 'fuel', 'ice_water', 'phone_charged']
+        return_in_hours: S.ret,
+        checklist: ['life_jackets', 'fuel', 'ice_water', 'phone_charged']
       })
     });
   } catch (e) {}
@@ -697,9 +727,16 @@ $('tgo').onclick = async () => {
   toast('⛵ ' + (S.lang ? 'ಪ್ರಯಾಣ ಪ್ರಾರಂಭ. ಕುಟುಂಬಕ್ಕೆ ತಿಳಿಸಲಾಗಿದೆ' : 'Trip started. Family informed'));
 };
 
-$('tod').onclick = () => {
+$('tod').onclick = async () => {
   S.overdue = 1;
   fAlert('⏰ Overdue: back-by time has passed. Tried calling Suresh.', 'amber');
+  try {
+    await fetch(`${API_BASE}/api/v1/trips/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: S.user ? S.user.phone : '9876500021', status: 'overdue' })
+    });
+  } catch (e) {}
   fetchGuardWatch();
   toast('⏰ Family and coast guard notified');
 };
@@ -853,6 +890,20 @@ async function act(a) {
       for (let i = 0; i < PF[S.role].length; i++) {
         if (!(fv[i] || '').trim()) return toast(L('Please fill every box', 'ಎಲ್ಲಾ ಬಾಕ್ಸ್ ತುಂಬಿ'));
       }
+      try {
+        await fetch(`${API_BASE}/api/v1/auth/verify-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: mob,
+            otp: '4821',
+            role: S.role,
+            name: fv[0],
+            boat_name: fv[1],
+            emergency_phone: fv[3]
+          })
+        });
+      } catch (e) {}
       au = 6;
     } else {
       au++;
@@ -1323,10 +1374,133 @@ $('vx').onclick = () => {
   try { speechSynthesis.cancel(); } catch (e) {}
 };
 
+// --- PRO-2 TRACKING HEALTH & FOREGROUND SERVICE (Spec v1.1 D17, FR-SEA-07, TR-CLI-12) ---
+function updateFgNotif() {
+  const el = $('fg-notif');
+  if (!el) return;
+  if (S.trip) {
+    el.style.display = 'flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+async function fetchTrackingHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/devices/health?phone=${S.user ? S.user.phone : '9876500021'}`);
+    if (!res.ok) return;
+    const d = await res.json();
+    renderHealthUI(d);
+  } catch (e) {}
+}
+
+function renderHealthUI(d) {
+  const stateEl = $('h-state');
+  const n15Sea = $('sea-n15');
+  const isDegraded = d.tracking_state === 'degraded' || d.tracking_state === 'stopped';
+
+  if (stateEl) {
+    if (isDegraded) {
+      stateEl.style.background = '#f0a02033';
+      stateEl.style.color = '#f0a020';
+      stateEl.textContent = d.tracking_state === 'degraded' ? '▲ Degraded (N-15 Alert)' : '✕ Stopped';
+    } else {
+      stateEl.style.background = '#1fa35b22';
+      stateEl.style.color = '#1fa35b';
+      stateEl.textContent = '● Running (Foreground Service)';
+    }
+  }
+
+  if (n15Sea) {
+    n15Sea.style.display = isDegraded ? 'block' : 'none';
+  }
+
+  const fgEl = $('fg-notif');
+  if (fgEl) {
+    const batEl = $('fg-bat');
+    if (batEl) batEl.textContent = (d.battery_pct || 86) + '%';
+    if (isDegraded) {
+      fgEl.style.borderColor = '#f0a020';
+      fgEl.style.color = '#f0a020';
+    } else {
+      fgEl.style.borderColor = '#1fa35b';
+      fgEl.style.color = '#8fd0ff';
+    }
+  }
+
+  if ($('h-loc')) $('h-loc').textContent = d.location_permission === 'always' ? 'Always allow (granted)' : d.location_permission;
+  if ($('h-notif')) $('h-notif').textContent = d.notifications_enabled ? 'Notifications enabled' : 'Disabled';
+  if ($('h-bat-opt')) $('h-bat-opt').textContent = d.battery_optimised ? 'Restricted by OS' : 'Whitelisted (No restrictions)';
+  if ($('h-dev')) $('h-dev').textContent = d.device_model ? (d.device_model + ' · Android 14') : 'Xiaomi Redmi Note 12 · Android 14';
+  if ($('h-oem-guide') && d.oem_guidance) $('h-oem-guide').textContent = d.oem_guidance;
+}
+
+if ($('fg-notif')) $('fg-notif').onclick = () => show(10);
+if ($('sea-n15')) $('sea-n15').onclick = () => show(10);
+if ($('phealth')) $('phealth').onclick = () => show(10);
+if ($('hlth-back')) $('hlth-back').onclick = () => show(1);
+
+if ($('h-sim-fail')) {
+  $('h-sim-fail').onclick = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/devices/health`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: S.user ? S.user.phone : '9876500021',
+          tracking_state: 'degraded',
+          reason: 'Battery Saver killed service (N-15)',
+          battery_pct: 18,
+        })
+      });
+      if (res.ok) {
+        renderHealthUI({
+          tracking_state: 'degraded',
+          battery_pct: 18,
+          location_permission: 'always',
+          notifications_enabled: true,
+          battery_optimised: true,
+        });
+        fAlert('⚠ Suresh’s tracking has degraded · Last update 14m ago', 'amber');
+        toast('⚠️ N-15: Tracking service killed by battery manager');
+      }
+    } catch (e) {}
+  };
+}
+
+if ($('h-fix-resume')) {
+  $('h-fix-resume').onclick = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/devices/health`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: S.user ? S.user.phone : '9876500021',
+          tracking_state: 'running',
+          battery_pct: 86,
+          reason: 'Service manually resumed by fisher',
+        })
+      });
+      if (res.ok) {
+        renderHealthUI({
+          tracking_state: 'running',
+          battery_pct: 86,
+          location_permission: 'always',
+          notifications_enabled: true,
+          battery_optimised: false,
+        });
+        toast('✅ Foreground tracking service restored.');
+      }
+    } catch (e) {}
+  };
+}
+
 // Initialise
 rt();
 A();
 fetchDawnWeather();
 fetchPrices();
 fetchDiarySummary();
+fetchTrackingHealth();
+updateFgNotif();
 fab();

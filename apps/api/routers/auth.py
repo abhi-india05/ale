@@ -82,6 +82,29 @@ async def verify_otp(req: VerifyOtpRequest, db: AsyncSession = Depends(get_db)):
 
         await db.commit()
         await db.refresh(user)
+    else:
+        # Update existing user profile if new information provided
+        if req.name:
+            user.name = req.name
+        if req.role:
+            user.role = req.role
+        if req.role == "fisher":
+            p_res = await db.execute(select(FisherProfile).where(FisherProfile.user_id == user.id))
+            profile = p_res.scalar_one_or_none()
+            if not profile:
+                profile = FisherProfile(
+                    user_id=user.id,
+                    boat_name=req.boat_name or "Ale-Malpe-07",
+                    emergency_phone=req.emergency_phone or "9876500012",
+                )
+                db.add(profile)
+            else:
+                if req.boat_name:
+                    profile.boat_name = req.boat_name
+                if req.emergency_phone:
+                    profile.emergency_phone = req.emergency_phone
+        await db.commit()
+        await db.refresh(user)
 
     session_token = f"ale_sess_{uuid.uuid4().hex}"
     return {

@@ -16,6 +16,9 @@ from apps.api.models import (
     WeatherRule,
     WeatherSnapshot,
     LedgerEntry,
+    Device,
+    DeviceHealthReport,
+    FeatureFlag,
 )
 
 
@@ -27,7 +30,8 @@ async def seed_database():
         # Check if already seeded
         result = await session.execute(select(Harbour).limit(1))
         if result.scalar_one_or_none():
-            print("Database already contains seed data. Skipping.")
+            await seed_v11_defaults(session)
+            print("Database already contains core seed data. Ensured v1.1 flags & device health.")
             return
 
         print("Seeding Ale Voice database...")
@@ -204,8 +208,62 @@ async def seed_database():
             client_op_id="seed_fuel_01",
         ))
 
+        await seed_v11_defaults(session)
+
         await session.commit()
-        print("Database successfully seeded with Malpe Harbour, Personas, and Prices!")
+        print("Database successfully seeded with Malpe Harbour, Personas, Prices, and v1.1 Defaults!")
+
+
+# WHY: FR-APP-01, FR-SEA-07, TR-CLI-12, TR-CLI-15 — Default feature flags and Android device health seed
+async def seed_v11_defaults(session):
+    """Seed feature flags, Suresh's Xiaomi Redmi Note 12 device and initial health report."""
+    flags = [
+        ("min_app_version", True, '{"min_version": "1.1.0", "current_version": "1.1.0", "play_store_url": "https://play.google.com/store/apps/details?id=in.alevoice.mobile", "apk_download_url": "/downloads/ale-v1.1.0.apk"}'),
+        ("llm_fallback", False, '{"mode": "offline_first", "timeout_ms": 1500}'),
+        ("helpline", True, '{"number": "1554", "label_kn": "ಕರಾವಳಿ ಕಾವಲು ಪಡೆ (1554)"}'),
+        ("inspector", True, '{"allowed_roles": ["guard", "admin"]}'),
+    ]
+    for key, enabled, payload in flags:
+        res = await session.execute(select(FeatureFlag).where(FeatureFlag.key == key))
+        if not res.scalar_one_or_none():
+            session.add(FeatureFlag(key=key, enabled=enabled, payload_json=payload))
+
+    # Suresh's Android Device & Health
+    u_res = await session.execute(select(User).where(User.phone == "9876500021"))
+    suresh = u_res.scalar_one_or_none()
+    if suresh:
+        d_res = await session.execute(select(Device).where(Device.user_id == suresh.id))
+        dev = d_res.scalar_one_or_none()
+        if not dev:
+            dev = Device(
+                user_id=suresh.id,
+                platform="android",
+                push_provider="fcm",
+                push_token="fcm_token_suresh_redmi12_demo",
+                app_version="1.1.0",
+                os_version="Android 14 (HyperOS)",
+                device_model="Xiaomi Redmi Note 12 5G",
+                locale="kn-IN",
+            )
+            session.add(dev)
+            await session.flush()
+
+        h_res = await session.execute(select(DeviceHealthReport).where(DeviceHealthReport.user_id == suresh.id))
+        if not h_res.scalar_one_or_none():
+            session.add(DeviceHealthReport(
+                device_id=dev.id,
+                user_id=suresh.id,
+                tracking_state="running",
+                location_permission="always",
+                notifications_enabled=True,
+                battery_optimised=False,
+                gps_enabled=True,
+                battery_pct=86,
+                network="good",
+                reason="Foreground service active with ongoing notification (Spec v1.1 D17).",
+            ))
+
+    await session.commit()
 
 
 async def main():

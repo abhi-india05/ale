@@ -24,6 +24,10 @@ from apps.api.models.schema import (
     TtsCache,
     OutboxOp,
     AuditLog,
+    Device,
+    DeviceHealthReport,
+    TripPosition,
+    FeatureFlag,
 )
 
 __all__ = [
@@ -53,4 +57,8 @@ __all__ = [
     "TtsCache",
     "OutboxOp",
     "AuditLog",
+    "Device",
+    "DeviceHealthReport",
+    "TripPosition",
+    "FeatureFlag",
 ]

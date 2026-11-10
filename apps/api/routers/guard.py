@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.core.database import get_db
-from apps.api.models import User, SosEvent, IncidentEvent, Alert
+from apps.api.models import User, Trip, SosEvent, IncidentEvent, Alert
 
 
 router = APIRouter(prefix="/api/v1/guard", tags=["guard"])
@@ -30,7 +30,10 @@ async def get_guard_watch(db: AsyncSession = Depends(get_db)):
     active_sos = sos_res.scalar_one_or_none()
 
     active_incident = None
+    has_emergency = False
+
     if active_sos:
+        has_emergency = True
         active_incident = {
             "type": "sos",
             "boat": "Ale-Malpe-07",
@@ -38,11 +41,23 @@ async def get_guard_watch(db: AsyncSession = Depends(get_db)):
             "location": "4 km offshore · 3 boats nearby",
             "severity": "red",
         }
+    else:
+        overdue_res = await db.execute(select(Trip).where(Trip.status == "overdue").order_by(Trip.created_at.desc()).limit(1))
+        overdue_trip = overdue_res.scalar_one_or_none()
+        if overdue_trip:
+            has_emergency = True
+            active_incident = {
+                "type": "overdue",
+                "boat": "Ale-Malpe-07",
+                "fisher": "Suresh",
+                "location": f"Expected back {overdue_trip.eta_text or 'earlier'} · family notified",
+                "severity": "amber",
+            }
 
     return {
         "sector": "Malpe–Udupi sector",
         "tracked_boats_count": 12,
-        "has_active_emergency": active_sos is not None,
+        "has_active_emergency": has_emergency,
         "active_incident": active_incident,
     }
 
@@ -76,6 +91,11 @@ async def dispatch_rescue(req: DispatchRequest, db: AsyncSession = Depends(get_d
     for s in sos_res.scalars().all():
         s.status = "resolved"
         s.resolved_at = datetime.now(timezone.utc)
+
+    # Resolve active overdue trips
+    od_res = await db.execute(select(Trip).where(Trip.status == "overdue"))
+    for t in od_res.scalars().all():
+        t.status = "returning"
 
     # Broadcast resolution to family
     fam_res = await db.execute(select(User).where(User.role == "family"))

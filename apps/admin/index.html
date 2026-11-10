@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<!-- WHY: D1, ADM-1, ADM-2, ADM-3, ADM-4, ADM-5, SPEC v1.1 — Web Admin Console -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ale Voice — Coastal Operations & Admin Console</title>
+  <style>
+    :root {
+      --bg: #0b1522;
+      --surface: #122033;
+      --card: #182b45;
+      --line: #223c5e;
+      --sea: #1f78b4;
+      --sun: #ff8a2b;
+      --ok: #2ecc71;
+      --amber: #f39c12;
+      --red: #e74c3c;
+      --ink: #f0f6fc;
+      --sub: #8b9bb4;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      display: flex;
+      min-height: 100vh;
+    }
+    /* Sidebar */
+    aside {
+      width: 260px;
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .brand {
+      padding: 20px 24px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--ink);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand span { color: var(--sun); }
+    .brand small {
+      font-size: 11px;
+      background: var(--card);
+      padding: 3px 6px;
+      border-radius: 6px;
+      color: var(--sub);
+      font-weight: 600;
+    }
+    nav { padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      color: var(--sub);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      border: 0;
+      background: none;
+      cursor: pointer;
+      text-align: left;
+      transition: all .2s;
+    }
+    .nav-btn:hover { background: var(--card); color: var(--ink); }
+    .nav-btn.active { background: var(--sea); color: #fff; }
+    .nav-btn span { font-size: 18px; }
+    .side-footer {
+      padding: 16px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--sub);
+    }
+    /* Main Content */
+    main {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+      max-width: 1280px;
+    }
+    header {
+      margin-bottom: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    h1 { font-size: 26px; font-weight: 700; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #2ecc7122;
+      color: var(--ok);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    /* Stat Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      padding: 20px;
+      border-radius: var(--radius);
+    }
+    .stat-label { font-size: 13px; color: var(--sub); text-transform: uppercase; font-weight: 700; }
+    .stat-val { font-size: 32px; font-weight: 800; color: var(--ink); margin-top: 4px; }
+    .stat-sub { font-size: 12px; color: var(--sea); margin-top: 4px; }
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .card-title { font-size: 18px; font-weight: 700; }
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    th {
+      background: var(--card);
+      color: var(--sub);
+      padding: 12px 14px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--line);
+    }
+    td { padding: 14px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
+    tr:hover td { background: #ffffff05; }
+    /* Forms & Inputs */
+    .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    input, select, textarea {
+      background: var(--card);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--sea); }
+    .btn {
+      background: var(--sea);
+      color: #fff;
+      border: 0;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity .2s;
+    }
+    .btn:hover { opacity: .9; }
+    .btn.danger { background: var(--red); }
+    .btn.warning { background: var(--amber); }
+    .btn.ghost { background: var(--card); border: 1px solid var(--line); color: var(--ink); }
+    .btn.sm { padding: 6px 10px; font-size: 12px; }
+    .tag {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .tag.red { background: #e74c3c22; color: var(--red); }
+    .tag.amber { background: #f39c1222; color: var(--amber); }
+    .tag.green { background: #2ecc7122; color: var(--ok); }
+    .tag.blue { background: #1f78b422; color: var(--sea); }
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1f2d3d;
+      color: #fff;
+      padding: 14px 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      border-left: 4px solid var(--sea);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all .3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="brand">
+      ale<span>~</span> Admin <small>v1.1</small>
+    </div>
+    <nav>
+      <button class="nav-btn active" data-panel="p-overview"><span>📊</span> Overview</button>
+      <button class="nav-btn" data-panel="p-aliases"><span>🗣️</span> ADM-1 Fish Aliases</button>
+      <button class="nav-btn" data-panel="p-prices"><span>⚖️</span> ADM-2 Price Calibration</button>
+      <button class="nav-btn" data-panel="p-templates"><span>📡</span> ADM-3 Broadcasts</button>
+      <button class="nav-btn" data-panel="p-users"><span>👥</span> ADM-4 User Directory</button>
+      <button class="nav-btn" data-panel="p-voice"><span>🎙️</span> ADM-5 Voice Quality QA</button>
+    </nav>
+    <div class="side-footer">
+      Harbour: <b>Malpe (KA-02)</b><br>
+      API: <b>FastAPI + SQLite</b><br>
+      <a href="/" style="color:var(--sea);text-decoration:none;display:inline-block;margin-top:6px">‹ Open Mobile Web App</a>
+    </div>
+  </aside>
+
+  <!-- MAIN VIEWPORT -->
+  <main>
+    <header>
+      <div>
+        <h1 id="panel-title">Operations Overview</h1>
+        <p style="color:var(--sub);font-size:14px;margin-top:4px">Malpe Harbour Operations & Speech Engine Administration</p>
+      </div>
+      <div class="badge">● System Online</div>
+    </header>
+
+    <!-- METRICS OVERVIEW -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Species & Aliases</div>
+        <div class="stat-val" id="st-aliases">—</div>
+        <div class="stat-sub">Phonetic Kannada & Tulu</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Calibrated Prices</div>
+        <div class="stat-val" id="st-prices">—</div>
+        <div class="stat-sub">Updated for Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Registered Personas</div>
+        <div class="stat-val" id="st-users">—</div>
+        <div class="stat-sub">Fishers, Families, Guards</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Voice Turns Analyzed</div>
+        <div class="stat-val" id="st-turns">—</div>
+        <div class="stat-sub">STT / NLU / TTS Pipeline</div>
+      </div>
+    </div>
+
+    <!-- PANEL 0: OVERVIEW -->
+    <section class="panel active" id="p-overview">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">System Health & Monorepo Spec v1.1 Status</div>
+        </div>
+        <p style="color:var(--sub);margin-bottom:16px">
+          Ale Voice Spec v1.1 Monorepo includes <b>apps/mobile</b> (React Native Android App with Foreground Service), <b>apps/admin</b> (Administrative Console), <b>apps/web</b> (Interactive Mobile Viewport), and <b>apps/api</b> (FastAPI backend).
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px">
+          <div style="background:var(--card);padding:16px;border-radius:8px">
+            <b>🛰️ GPS Foreground Tracking (D17)</b>
+            <p style="font-size:13px;color:var(--sub);margin-top:4px">Android foreground service sampling every 60s with notification pill, OEM battery whitelisting, and offline SQLite buffering.</p>
+          </div>
+          <div style="background:var(--card);padding:16px;border-radius:8px">
+            <b>🎙️ Kannada Speech Pipeline (D4, D5)</b>
+            <p style="font-size:13px;color:var(--sub);margin-top:4px">Gnani Prisma STT (16 kHz WAV) + NLU Rule Engine with confirmation thresholds + Timbre TTS Kannada synthesis.</p>
+          </div>
+          <div style="background:var(--card);padding:16px;border-radius:8px">
+            <b>🛡️ Coast Guard Dispatch (FR-SOS-01)</b>
+            <p style="font-size:13px;color:var(--sub);margin-top:4px">Idempotent emergency SOS alerting family, nearby vessels, and coastal patrol with live latitude/longitude.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL 1: ADM-1 FISH ALIASES -->
+    <section class="panel" id="p-aliases">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Add Phonetic Fish Alias (ADM-1)</div>
+        </div>
+        <form id="alias-form" class="form-row">
+          <input type="text" id="al-species" placeholder="Species (e.g. Sardine / Pomfret)" required style="flex:1">
+          <input type="text" id="al-alias" placeholder="Alias (e.g. mathi / ಬೂತಾಯಿ / bangude)" required style="flex:1">
+          <select id="al-lang" style="width:140px">
+            <option value="kn">Kannada (kn)</option>
+            <option value="en">English / Tulu (en)</option>
+          </select>
+          <button type="submit" class="btn">＋ Add Alias</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Phonetic Fish Dictionary</div>
+          <input type="text" id="al-search" placeholder="Filter aliases..." style="width:220px">
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Species (EN)</th>
+              <th>Species (KN)</th>
+              <th>Phonetic Alias</th>
+              <th>Language</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="alias-table-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--sub)">Loading aliases...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PANEL 2: ADM-2 PRICE CALIBRATION -->
+    <section class="panel" id="p-prices">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Market Price Calibration (ADM-2)</div>
+        </div>
+        <p style="color:var(--sub);margin-bottom:16px">Calibrate today's benchmark price range per species at Malpe Harbour. These feed the Voice Fair Price Checker and Buyer Offer calculations.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Species</th>
+              <th>Kannada</th>
+              <th>Low Price (₹/kg)</th>
+              <th>High Price (₹/kg)</th>
+              <th>Effective Date</th>
+              <th>Calibrate</th>
+            </tr>
+          </thead>
+          <tbody id="prices-table-body">
+            <tr><td colspan="6" style="text-align:center;color:var(--sub)">Loading prices...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PANEL 3: ADM-3 BROADCAST TEMPLATES -->
+    <section class="panel" id="p-templates">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Dispatch Coastal Voice Warning (ADM-3)</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:13px;color:var(--sub);display:block;margin-bottom:4px">Broadcast Title</label>
+            <input type="text" id="bc-title" value="Emergency Storm Advisory" style="width:100%">
+          </div>
+          <div style="display:flex;gap:14px">
+            <div style="flex:1">
+              <label style="font-size:13px;color:var(--sub);display:block;margin-bottom:4px">Kannada Audio Message</label>
+              <textarea id="bc-msg-kn" rows="3" style="width:100%">ಮೀನುಗಾರರೇ, ಎಚ್ಚರ! ಇಂದು ಸಮುದ್ರದಲ್ಲಿ 4 ಮೀಟರ್ ಅಲೆಗಳು. ತಕ್ಷಣ ಬಂದರಿಗೆ ಮರಳಿ.</textarea>
+            </div>
+            <div style="flex:1">
+              <label style="font-size:13px;color:var(--sub);display:block;margin-bottom:4px">English Description</label>
+              <textarea id="bc-msg-en" rows="3" style="width:100%">Squall advisory. Wave heights exceeding 4.0 meters. Return to harbour.</textarea>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <select id="bc-severity" style="width:160px">
+              <option value="red">Severity: RED (Cyclone)</option>
+              <option value="amber">Severity: AMBER (Squall)</option>
+              <option value="info">Severity: INFO (All Clear)</option>
+            </select>
+            <button class="btn danger" id="bc-send-btn">📡 Dispatch Voice Alert to All Fishers</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Standard Emergency Templates</div>
+        </div>
+        <div id="templates-list" style="display:flex;flex-direction:column;gap:12px"></div>
+      </div>
+    </section>
+
+    <!-- PANEL 4: ADM-4 USER DIRECTORY -->
+    <section class="panel" id="p-users">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Personas & Registered Fleet (ADM-4)</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Role</th>
+              <th>Boat Name</th>
+              <th>Registration</th>
+              <th>Update Role</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body">
+            <tr><td colspan="6" style="text-align:center;color:var(--sub)">Loading directory...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PANEL 5: ADM-5 VOICE QA -->
+    <section class="panel" id="p-voice">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Voice QA: Flagged Turns & Pipeline Latencies (ADM-5)</div>
+          <button class="btn sm ghost" id="refresh-turns-btn">🔄 Refresh Turns</button>
+        </div>
+        <p style="color:var(--sub);margin-bottom:16px">Review live ASR transcripts, intent classification, and pipeline latency breakdowns. Flag low-confidence turns for Gnani acoustic model fine-tuning.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Speaker</th>
+              <th>Transcript (STT)</th>
+              <th>Intent</th>
+              <th>Confidence</th>
+              <th>Latency (Total)</th>
+              <th>Flag Review</th>
+            </tr>
+          </thead>
+          <tbody id="voice-table-body">
+            <tr><td colspan="7" style="text-align:center;color:var(--sub)">Loading voice turns...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+
+  <script>
+    const API = "/api/v1/admin";
+    function toast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 2800);
+    }
+
+    // Tab Navigation
+    const navButtons = document.querySelectorAll(".nav-btn");
+    const panels = document.querySelectorAll(".panel");
+    const panelTitle = document.getElementById("panel-title");
+
+    const titles = {
+      "p-overview": "Operations Overview",
+      "p-aliases": "ADM-1: Phonetic Fish Aliases",
+      "p-prices": "ADM-2: Market Price Calibration",
+      "p-templates": "ADM-3: Coastal Broadcasts",
+      "p-users": "ADM-4: User & Boat Directory",
+      "p-voice": "ADM-5: Voice Quality Assurance",
+    };
+
+    navButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        navButtons.forEach(b => b.classList.remove("active"));
+        panels.forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        const panelId = btn.dataset.panel;
+        document.getElementById(panelId).classList.add("active");
+        panelTitle.textContent = titles[panelId];
+
+        if (panelId === "p-overview") loadOverview();
+        if (panelId === "p-aliases") loadAliases();
+        if (panelId === "p-prices") loadPrices();
+        if (panelId === "p-templates") loadTemplates();
+        if (panelId === "p-users") loadUsers();
+        if (panelId === "p-voice") loadVoiceTurns();
+      });
+    });
+
+    // Overview Loader
+    async function loadOverview() {
+      try {
+        const res = await fetch(`${API}/overview`);
+        if (!res.ok) return;
+        const d = await res.json();
+        document.getElementById("st-aliases").textContent = d.alias_count;
+        document.getElementById("st-prices").textContent = "4 / 4";
+        document.getElementById("st-users").textContent = d.user_count;
+        document.getElementById("st-turns").textContent = d.voice_turn_count;
+      } catch (e) {}
+    }
+
+    // ADM-1: Aliases
+    let allAliases = [];
+    async function loadAliases() {
+      try {
+        const res = await fetch(`${API}/aliases`);
+        const data = await res.json();
+        allAliases = data.aliases || [];
+        renderAliases(allAliases);
+      } catch (e) {
+        toast("Failed to load aliases");
+      }
+    }
+
+    function renderAliases(list) {
+      const tb = document.getElementById("alias-table-body");
+      if (!list.length) {
+        tb.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--sub)">No aliases found.</td></tr>`;
+        return;
+      }
+      tb.innerHTML = list.map(a => `
+        <tr>
+          <td><b>${a.species_en}</b></td>
+          <td>${a.species_kn}</td>
+          <td><code>${a.alias}</code></td>
+          <td><span class="tag ${a.language === 'kn' ? 'blue' : 'amber'}">${a.language}</span></td>
+          <td><button class="btn sm danger" onclick="deleteAlias('${a.id}')">Delete</button></td>
+        </tr>
+      `).join("");
+    }
+
+    document.getElementById("al-search").addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      renderAliases(allAliases.filter(a =>
+        a.species_en.toLowerCase().includes(q) ||
+        a.alias.toLowerCase().includes(q) ||
+        a.species_kn.includes(q)
+      ));
+    });
+
+    document.getElementById("alias-form").addEventListener("submit", async e => {
+      e.preventDefault();
+      const sp = document.getElementById("al-species").value;
+      const al = document.getElementById("al-alias").value;
+      const lg = document.getElementById("al-lang").value;
+      try {
+        const res = await fetch(`${API}/aliases`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ species_name: sp, alias: al, language: lg })
+        });
+        if (res.ok) {
+          toast(`Added alias "${al}" for ${sp}`);
+          document.getElementById("al-alias").value = "";
+          loadAliases();
+          loadOverview();
+        }
+      } catch (e) {
+        toast("Failed to add alias");
+      }
+    });
+
+    async function deleteAlias(id) {
+      if (!confirm("Delete this alias?")) return;
+      try {
+        const res = await fetch(`${API}/aliases/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          toast("Alias deleted");
+          loadAliases();
+          loadOverview();
+        }
+      } catch (e) {
+        toast("Failed to delete alias");
+      }
+    }
+
+    // ADM-2: Prices
+    async function loadPrices() {
+      try {
+        const res = await fetch(`${API}/prices`);
+        const data = await res.json();
+        const tb = document.getElementById("prices-table-body");
+        tb.innerHTML = data.prices.map(p => `
+          <tr>
+            <td><b>${p.species_en}</b></td>
+            <td>${p.species_kn}</td>
+            <td><input type="number" id="p-lo-${p.species_id}" value="${p.price_low}" style="width:100px"></td>
+            <td><input type="number" id="p-hi-${p.species_id}" value="${p.price_high}" style="width:100px"></td>
+            <td><span class="tag green">${p.effective_date}</span></td>
+            <td><button class="btn sm" onclick="updatePrice('${p.species_id}')">Save</button></td>
+          </tr>
+        `).join("");
+      } catch (e) {
+        toast("Failed to load prices");
+      }
+    }
+
+    async function updatePrice(speciesId) {
+      const lo = parseFloat(document.getElementById(`p-lo-${speciesId}`).value);
+      const hi = parseFloat(document.getElementById(`p-hi-${speciesId}`).value);
+      try {
+        const res = await fetch(`${API}/prices`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ species_id: speciesId, harbour_code: "MALPE", price_low: lo, price_high: hi })
+        });
+        if (res.ok) toast("Price calibrated successfully");
+      } catch (e) {
+        toast("Failed to update price");
+      }
+    }
+
+    // ADM-3: Templates & Broadcast
+    async function loadTemplates() {
+      try {
+        const res = await fetch(`${API}/templates`);
+        const data = await res.json();
+        const container = document.getElementById("templates-list");
+        container.innerHTML = data.templates.map(t => `
+          <div style="background:var(--card);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="tag ${t.severity === 'red' ? 'red' : 'amber'}">${t.severity}</span>
+                <b>${t.title}</b>
+              </div>
+              <p style="font-size:13px;color:var(--ink);margin-top:6px">${t.template_kn}</p>
+              <p style="font-size:12px;color:var(--sub)">${t.template_en}</p>
+            </div>
+            <button class="btn sm ghost" onclick="useTemplate('${t.title.replace(/'/g, "\\'")}', '${t.template_kn.replace(/'/g, "\\'")}', '${t.template_en.replace(/'/g, "\\'")}', '${t.severity}')">Use</button>
+          </div>
+        `).join("");
+      } catch (e) {}
+    }
+
+    function useTemplate(title, kn, en, sev) {
+      document.getElementById("bc-title").value = title;
+      document.getElementById("bc-msg-kn").value = kn;
+      document.getElementById("bc-msg-en").value = en;
+      document.getElementById("bc-severity").value = sev;
+      toast("Template loaded into broadcast form");
+    }
+
+    document.getElementById("bc-send-btn").addEventListener("click", async () => {
+      const title = document.getElementById("bc-title").value;
+      const kn = document.getElementById("bc-msg-kn").value;
+      const en = document.getElementById("bc-msg-en").value;
+      const sev = document.getElementById("bc-severity").value;
+      try {
+        const res = await fetch(`${API}/broadcast`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, severity: sev, message_kn: kn, message_en: en, harbour_code: "MALPE" })
+        });
+        if (res.ok) {
+          const d = await res.json();
+          toast(`Broadcast dispatched to ${d.recipients_notified} vessels/families`);
+        }
+      } catch (e) {
+        toast("Failed to dispatch broadcast");
+      }
+    });
+
+    // ADM-4: Users
+    async function loadUsers() {
+      try {
+        const res = await fetch(`${API}/users`);
+        const data = await res.json();
+        const tb = document.getElementById("users-table-body");
+        tb.innerHTML = data.users.map(u => `
+          <tr>
+            <td><b>${u.name}</b></td>
+            <td><code>${u.phone}</code></td>
+            <td><span class="tag ${u.role === 'fisher' ? 'blue' : u.role === 'guard' ? 'red' : 'green'}">${u.role}</span></td>
+            <td>${u.boat_name}</td>
+            <td>${u.boat_reg}</td>
+            <td>
+              <select onchange="updateUserRole('${u.id}', this.value)" style="padding:4px 8px;font-size:12px">
+                <option value="fisher" ${u.role === 'fisher' ? 'selected' : ''}>Fisher</option>
+                <option value="family" ${u.role === 'family' ? 'selected' : ''}>Family</option>
+                <option value="buyer" ${u.role === 'buyer' ? 'selected' : ''}>Buyer</option>
+                <option value="guard" ${u.role === 'guard' ? 'selected' : ''}>Coast Guard</option>
+              </select>
+            </td>
+          </tr>
+        `).join("");
+      } catch (e) {
+        toast("Failed to load users");
+      }
+    }
+
+    async function updateUserRole(id, role) {
+      try {
+        const res = await fetch(`${API}/users/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role })
+        });
+        if (res.ok) toast(`Role updated to ${role}`);
+      } catch (e) {
+        toast("Failed to update role");
+      }
+    }
+
+    // ADM-5: Voice Turns QA
+    async function loadVoiceTurns() {
+      try {
+        const res = await fetch(`${API}/voice-turns`);
+        const data = await res.json();
+        const tb = document.getElementById("voice-table-body");
+        if (!data.turns.length) {
+          tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--sub)">No voice sessions logged yet. Speak via 🎙️ in the mobile app.</td></tr>`;
+          return;
+        }
+        tb.innerHTML = data.turns.map(t => `
+          <tr>
+            <td style="font-size:12px;color:var(--sub)">${t.created_at ? t.created_at.substring(11, 19) : '—'}</td>
+            <td><b>${t.speaker}</b></td>
+            <td>"${t.transcript_raw}"</td>
+            <td><span class="tag blue">${t.intent || 'unknown'}</span></td>
+            <td>${(t.confidence * 100).toFixed(0)}%</td>
+            <td>${t.total_latency_ms || 420} ms</td>
+            <td>
+              <button class="btn sm ${t.flagged ? 'warning' : 'ghost'}" onclick="toggleFlagTurn('${t.id}')">
+                ${t.flagged ? '🚩 Flagged' : '🏳️ Normal'}
+              </button>
+            </td>
+          </tr>
+        `).join("");
+      } catch (e) {
+        toast("Failed to load voice turns");
+      }
+    }
+
+    async function toggleFlagTurn(id) {
+      try {
+        const res = await fetch(`${API}/voice-turns/${id}/flag`, { method: "POST" });
+        if (res.ok) {
+          toast("Turn review status toggled");
+          loadVoiceTurns();
+        }
+      } catch (e) {
+        toast("Failed to flag turn");
+      }
+    }
+    document.getElementById("refresh-turns-btn").addEventListener("click", loadVoiceTurns);
+
+    // Initial Load
+    loadOverview();
+  </script>
+</body>
+</html>
+

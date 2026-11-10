@@ -2,7 +2,9 @@
 """Weather router fetching real Open-Meteo marine conditions with DB snapshot fallback."""
 
 from typing import Optional
+import uuid
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +15,78 @@ from apps.api.models import Harbour, WeatherRule, WeatherSnapshot
 
 
 router = APIRouter(prefix="/api/v1/weather", tags=["weather"])
+
+
+class WeatherSimulateRequest(BaseModel):
+    harbour_code: str = "MALPE"
+    verdict: str = "caution"  # "go", "caution", "no_go"
+    wind_kmh: Optional[float] = None
+    wave_m: Optional[float] = None
+
+
+@router.post("/simulate")
+async def simulate_weather(req: WeatherSimulateRequest, db: AsyncSession = Depends(get_db)):
+    """Simulate weather conditions and persist snapshot so voice & UI stay synchronized."""
+    h_res = await db.execute(select(Harbour).where(Harbour.code == req.harbour_code))
+    harbour = h_res.scalar_one_or_none()
+    harbour_id = harbour.id if harbour else str(uuid.uuid4())
+
+    wind = req.wind_kmh
+    wave = req.wave_m
+    if req.verdict == "no_go":
+        wind = wind or 45.0
+        wave = wave or 3.5
+        kn = "ಹೋಗಬೇಡಿ. ಗಾಳಿ ನಲವತ್ತೈದು, ಅಲೆ ಮೂರೂವರೆ ಮೀಟರ್."
+        en = "Do not go. Wind 45 km/h, waves about 3.5 m."
+        color = "#d6372f"
+        angle = 60
+        label_en = "Don’t go"
+        label_kn = "ಹೋಗಬೇಡಿ"
+    elif req.verdict == "caution":
+        wind = wind or 28.0
+        wave = wave or 1.8
+        kn = "ಜಾಗರೂಕರಾಗಿರಿ. ಗಾಳಿ ಇಪ್ಪತ್ತೆಂಟು, ಅಲೆ ಎರಡು ಮೀಟರ್ ಹತ್ತಿರ."
+        en = "Be careful. Wind 28 km/h, waves near 2 m."
+        color = "#f0a020"
+        angle = 0
+        label_en = "Be careful"
+        label_kn = "ಜಾಗರೂಕರಾಗಿರಿ"
+    else:
+        wind = wind or 12.0
+        wave = wave or 0.8
+        kn = "ಹೋಗಬಹುದು. ಗಾಳಿ ಹನ್ನೆರಡು ಕಿಲೋಮೀಟರ್, ಅಲೆ ಒಂದು ಮೀಟರ್ ಒಳಗೆ."
+        en = "Go. Wind 12 km/h, waves under 1 m."
+        color = "#1fa35b"
+        angle = -60
+        label_en = "Go"
+        label_kn = "ಹೋಗಬಹುದು"
+
+    snap = WeatherSnapshot(
+        harbour_id=harbour_id,
+        wind_kmh=wind,
+        wave_m=wave,
+        verdict=req.verdict,
+        kn_summary=kn,
+        en_summary=en,
+        raw_payload=f'{{"source": "simulated", "verdict": "{req.verdict}"}}',
+    )
+    db.add(snap)
+    await db.commit()
+
+    return {
+        "status": "simulated",
+        "verdict": req.verdict,
+        "label_en": label_en,
+        "label_kn": label_kn,
+        "color": color,
+        "gauge_angle": angle,
+        "wind_kmh": wind,
+        "wave_m": wave,
+        "high_tide": "6:12 AM",
+        "low_tide": "12:30 PM",
+        "kn_summary": kn,
+        "en_summary": en,
+    }
 
 
 @router.get("/dawn")
@@ -26,6 +100,47 @@ async def get_dawn_weather(
     harbour = h_res.scalar_one_or_none()
     lat = harbour.lat if harbour else settings.malpe_lat
     lon = harbour.lon if harbour else settings.malpe_lon
+
+    # Check for recent persisted snapshot (e.g. simulated or seeded)
+    snap_res = await db.execute(
+        select(WeatherSnapshot).order_by(WeatherSnapshot.created_at.desc()).limit(1)
+    )
+    snap = snap_res.scalar_one_or_none()
+    if snap:
+        verdict = snap.verdict
+        wind_kmh = snap.wind_kmh
+        wave_m = snap.wave_m
+        if verdict == "no_go":
+            label_en = "Don’t go"
+            label_kn = "ಹೋಗಬೇಡಿ"
+            color = "#d6372f"
+            angle = 60
+        elif verdict == "caution":
+            label_en = "Be careful"
+            label_kn = "ಜಾಗರೂಕರಾಗಿರಿ"
+            color = "#f0a020"
+            angle = 0
+        else:
+            label_en = "Go"
+            label_kn = "ಹೋಗಬಹುದು"
+            color = "#1fa35b"
+            angle = -60
+
+        return {
+            "harbour": harbour.name if harbour else "Malpe",
+            "verdict": verdict,
+            "label_en": label_en,
+            "label_kn": label_kn,
+            "color": color,
+            "gauge_angle": angle,
+            "wind_kmh": round(wind_kmh, 1),
+            "wave_m": round(wave_m, 2),
+            "high_tide": "6:12 AM",
+            "low_tide": "12:30 PM",
+            "kn_summary": snap.kn_summary,
+            "en_summary": snap.en_summary,
+            "source": "snapshot",
+        }
 
     wind_kmh = 12.0
     wave_m = 0.8
